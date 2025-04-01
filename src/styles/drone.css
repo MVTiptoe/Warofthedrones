@@ -1,0 +1,58 @@
+/* Animations for propellers */
+@keyframes spin {
+    from {
+        transform: rotateY(0deg);
+    }
+
+    to {
+        transform: rotateY(360deg);
+    }
+}
+
+/* Main drone styles */
+.drone-propeller {
+    animation: spin 0.2s linear infinite;
+}
+
+.drone-body {
+    transform-style: preserve-3d;
+}
+
+/* Drone-specific colors */
+.grenadier-color {
+    color: #4caf50;
+}
+
+.kamikaze-color {
+    color: #f44336;
+}
+
+.bomber-color {
+    color: #2196f3;
+}
+
+/* HUD elements */
+.drone-hud {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    color: white;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    z-index: 100;
+    pointer-events: none;
+}
+
+.drone-reticle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    z-index: 100;
+    pointer-events: none;
+}

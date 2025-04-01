@@ -1,0 +1,242 @@
+/* Reset default margins and padding */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f5f5f5;
+}
+
+#root {
+    height: 100%;
+    width: 100%;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    pointer-events: auto;
+}
+
+button {
+    position: relative;
+    z-index: 2000 !important;
+    pointer-events: auto !important;
+}
+
+.ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.ui-layer>* {
+    pointer-events: auto;
+}
+
+/* Vehicle Health HUD Styles */
+.vehicle-health-hud {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 15px;
+    color: white;
+    font-family: 'Arial', sans-serif;
+    width: 300px;
+    z-index: 1000;
+}
+
+.vehicle-health-hud h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.health-bar-container {
+    margin-bottom: 10px;
+}
+
+.health-bar-label {
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.health-bar-outer {
+    height: 20px;
+    background-color: #333;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.health-bar-inner {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.health-status {
+    margin-top: 5px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.mobility-info {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #ffaa00;
+}
+
+.damage-effects {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #ff6666;
+}
+
+.damage-log {
+    margin-top: 10px;
+}
+
+.damage-log h4 {
+    margin: 0 0 5px 0;
+    font-size: 14px;
+}
+
+.damage-log ul {
+    margin: 0;
+    padding: 0 0 0 20px;
+    font-size: 12px;
+}
+
+.damage-log li {
+    margin-bottom: 2px;
+}
+
+/* Vehicle Damage Controls Styles */
+.vehicle-damage-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 15px;
+    color: white;
+    font-family: 'Arial', sans-serif;
+    width: 300px;
+    z-index: 1000;
+}
+
+.vehicle-damage-controls h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #ffffff;
+}
+
+.control-group {
+    margin-bottom: 15px;
+}
+
+.control-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.control-group input,
+.control-group select {
+    width: 100%;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #666;
+    background-color: #333;
+    color: white;
+    margin-top: 5px;
+}
+
+.control-group span {
+    display: inline-block;
+    margin-left: 10px;
+    font-weight: bold;
+}
+
+.button-group {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.button-group button {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+    margin-bottom: 10px;
+    flex: 1;
+    margin-right: 5px;
+}
+
+.button-group button:last-child {
+    margin-right: 0;
+}
+
+.damage-button {
+    background-color: #e53935;
+    color: white;
+}
+
+.damage-button:hover {
+    background-color: #c62828;
+}
+
+.repair-button {
+    background-color: #43a047;
+    color: white;
+}
+
+.repair-button:hover {
+    background-color: #2e7d32;
+}
+
+.repair-full-button {
+    background-color: #1e88e5;
+    color: white;
+}
+
+.repair-full-button:hover {
+    background-color: #1565c0;
+}
+
+button:disabled {
+    background-color: #666 !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}

@@ -1,0 +1,177 @@
+.vehicle-damage-controls {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    max-height: 80vh;
+    overflow-y: auto;
+    font-family: 'Arial', sans-serif;
+    z-index: 1000;
+}
+
+.vehicle-damage-controls h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 18px;
+    color: #1de9b6;
+    text-align: center;
+}
+
+.vehicle-damage-controls h4 {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #64ffda;
+}
+
+.control-group {
+    margin-bottom: 15px;
+}
+
+.control-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #b3e5fc;
+}
+
+.control-group select,
+.control-group input {
+    width: 100%;
+    padding: 6px;
+    background-color: #263238;
+    color: white;
+    border: 1px solid #455a64;
+    border-radius: 4px;
+}
+
+.control-group input[type="range"] {
+    margin-top: 5px;
+}
+
+.control-group span {
+    margin-left: 10px;
+    font-size: 14px;
+    color: #b3e5fc;
+}
+
+.button-group {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+}
+
+.button-group button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.button-group button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.damage-button {
+    background-color: #f44336;
+    color: white;
+}
+
+.damage-button:hover:not(:disabled) {
+    background-color: #d32f2f;
+}
+
+.repair-button {
+    background-color: #4caf50;
+    color: white;
+}
+
+.repair-button:hover:not(:disabled) {
+    background-color: #388e3c;
+}
+
+.health-bar {
+    width: 100%;
+    height: 15px;
+    background-color: #333;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.health-bar-fill {
+    height: 100%;
+    transition: width 0.3s ease-out, background-color 0.3s ease-out;
+}
+
+.vehicle-status {
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.vehicle-status p {
+    margin: 5px 0;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.effect-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.effect-tag {
+    background-color: #0277bd;
+    color: white;
+    font-size: 12px;
+    padding: 3px 6px;
+    border-radius: 3px;
+}
+
+.respawn-timer {
+    background-color: #ff9800;
+    color: black;
+    padding: 5px;
+    border-radius: 4px;
+    margin-top: 10px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.respawn-list {
+    margin-top: 20px;
+    border-top: 1px solid #455a64;
+    padding-top: 10px;
+}
+
+.respawn-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.respawn-list li {
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 8px 10px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.respawn-list span {
+    color: #ffab00;
+}

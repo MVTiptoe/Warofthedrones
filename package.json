@@ -1,0 +1,53 @@
+{
+    "name": "dronewars",
+    "version": "1.0.0",
+    "description": "A 3D game with Three.js, React, and React Three Fiber",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "build:prod": "node build.js",
+        "preview": "vite preview",
+        "analyze": "vite-bundle-visualizer",
+        "lint": "eslint src",
+        "lint:fix": "eslint src --fix",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "deploy:vercel": "vercel --prod"
+    },
+    "keywords": [
+        "three.js",
+        "react",
+        "react-three-fiber",
+        "3d",
+        "game"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@react-three/cannon": "^6.6.0",
+        "@react-three/drei": "latest",
+        "@react-three/fiber": "latest",
+        "cannon-es": "^0.20.0",
+        "file-saver": "^2.0.5",
+        "oimo": "^1.0.9",
+        "react": "latest",
+        "react-dom": "latest",
+        "three": "latest",
+        "uuid": "^9.0.1",
+        "zustand": "^5.0.3"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-react": "latest",
+        "eslint": "^8.56.0",
+        "eslint-plugin-react": "^7.33.2",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "terser": "^5.39.0",
+        "vite": "latest",
+        "vite-bundle-visualizer": "^0.11.0",
+        "vitest": "^1.2.1"
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    }
+}
