@@ -11,6 +11,8 @@ export default defineConfig({
         fs: {
             strict: false
         },
+        allowedHosts: ['drones.helpico.tech'],
+        port: 5000,
         host: true,
         open: true
     },

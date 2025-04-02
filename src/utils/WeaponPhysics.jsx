@@ -37,7 +37,10 @@ export const WEAPON_TYPES = {
     // Grenadier weapons
     DART: 'DART',
     GRENADE: 'GRENADE',
-    SHOTGUN: 'SHOTGUN'
+    SHOTGUN: 'SHOTGUN',
+
+    // Kamikaze drone weapon
+    KAMIKAZE_DRONE: 'KAMIKAZE_DRONE'
 };
 
 // Damage profiles for each weapon type
@@ -163,6 +166,29 @@ export const DAMAGE_PROFILES = {
                 debris: { count: 20, size: 0.3 },
                 smoke: { volume: 0.8, duration: 0.6 },
                 muzzleFlash: true
+            }
+        }
+    },
+
+    // Kamikaze drone weapon
+    [WEAPON_TYPES.KAMIKAZE_DRONE]: {
+        innerRadius: 15,
+        outerRadius: 30,
+        innerDamage: 100,
+        outerDamage: 40,
+        falloff: 'EXPONENTIAL',
+        explodesOnImpact: true, // Always explode on impact with vehicles
+        visualEffect: {
+            radius: 5,
+            duration: 40,
+            color: 0xff0000, // bright red
+            intensity: 3.0,
+            secondaryEffects: {
+                debris: { count: 80, size: 1.5 },
+                smoke: { volume: 3.0, duration: 2.5 },
+                shockwave: true,
+                fragments: true,
+                dustCloud: true
             }
         }
     }
@@ -396,6 +422,7 @@ export function getWeaponName(weaponType) {
         case WEAPON_TYPES.DART: return 'Dart';
         case WEAPON_TYPES.GRENADE: return 'Grenade';
         case WEAPON_TYPES.SHOTGUN: return 'Shotgun';
+        case WEAPON_TYPES.KAMIKAZE_DRONE: return 'Kamikaze Drone';
         default: return 'Unknown Weapon';
     }
 }
