@@ -6,7 +6,7 @@ import TruckVehicles, {
     MilitaryTruck1, MilitaryTruck2, MilitaryTruck3,
     civilianTrucks, militaryTrucks
 } from './TruckVehicles';
-import CarVehicles, { CarA, CarB, CarC } from './CarVehicles';
+import CarVehicles, { CarA, CarB, CarC, CarD, CarE } from './CarVehicles';
 
 // Grouped exports
 export const Tanks = TankVehicles;
@@ -31,7 +31,7 @@ export {
     militaryTrucks,
 
     // Cars
-    CarA, CarB, CarC
+    CarA, CarB, CarC, CarD, CarE
 };
 
 // Vehicle type mapping for dynamic usage
@@ -57,7 +57,9 @@ export const VehicleTypes = {
     // Cars
     car_a: CarA,
     car_b: CarB,
-    car_c: CarC
+    car_c: CarC,
+    car_d: CarD,
+    car_e: CarE
 };
 
 export default {

@@ -82,8 +82,8 @@ export default function Grenadier() {
 
     // Drone physics parameters
     const THRUST = 0.05;
-    const MAX_SPEED = 1.2;
-    const ROTATION_SPEED = 0.07; // Reduced for more subtle rotation
+    const MAX_SPEED = 1.5;
+    const ROTATION_SPEED = 0.06; // Reduced for more subtle rotation
     const FRICTION = 0.98;
     const GRAVITY = 0.004;
     const LIFT_POWER = 0.05;

@@ -37,7 +37,10 @@ export const WEAPON_TYPES = {
     // Grenadier weapons
     DART: 'DART',
     GRENADE: 'GRENADE',
-    SHOTGUN: 'SHOTGUN'
+    SHOTGUN: 'SHOTGUN',
+
+    // Kamikaze drone weapon
+    KAMIKAZE: 'KAMIKAZE'
 };
 
 // Damage profiles for each weapon type
@@ -163,6 +166,29 @@ export const DAMAGE_PROFILES = {
                 debris: { count: 20, size: 0.3 },
                 smoke: { volume: 0.8, duration: 0.6 },
                 muzzleFlash: true
+            }
+        }
+    },
+
+    // Kamikaze drone weapon
+    [WEAPON_TYPES.KAMIKAZE]: {
+        innerRadius: 15, // 15m inner radius as specified
+        outerRadius: 25, // 25m outer radius as specified
+        innerDamage: 80, // Updated to 80 damage in inner radius
+        outerDamage: 50, // Updated to 50 damage in outer radius
+        falloff: 'EXPONENTIAL',
+        explodesOnImpact: true, // Always explode on impact with vehicles
+        visualEffect: {
+            radius: 5, // Larger explosion radius
+            duration: 15, // Longer duration
+            color: 0xff0000, // Bright red explosion
+            intensity: 3.0, // Higher intensity
+            secondaryEffects: {
+                debris: { count: 60, size: 1.5 },
+                smoke: { volume: 2.5, duration: 2.0 },
+                shockwave: true,
+                fragments: true,
+                dustCloud: true
             }
         }
     }
@@ -396,6 +422,7 @@ export function getWeaponName(weaponType) {
         case WEAPON_TYPES.DART: return 'Dart';
         case WEAPON_TYPES.GRENADE: return 'Grenade';
         case WEAPON_TYPES.SHOTGUN: return 'Shotgun';
+        case WEAPON_TYPES.KAMIKAZE: return 'Kamikaze';
         default: return 'Unknown Weapon';
     }
 }
@@ -408,9 +435,9 @@ export function getWeaponName(weaponType) {
 function createVehicleHitbox(vehicle) {
     // Default hitbox dimensions if not specified
     const dimensions = vehicle.hitbox || {
-        width: 1.0,  // Width (left/right)
-        height: 1.0, // Height (up/down)
-        depth: 3.0   // Depth (front/back)
+        width: 1.33,  // Width (left/right)
+        height: 1.33, // Height (up/down)
+        depth: 4.0   // Depth (front/back)
     };
 
     // Create a box with the correct dimensions

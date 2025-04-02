@@ -3,12 +3,17 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import '../../styles/drone.css';
+import { checkProjectileVehicleCollision, WEAPON_TYPES } from '../../utils/WeaponPhysics';
+import { triggerExplosion } from '../effects/ExplosionsManager';
+import { showDamageIndicator } from '../effects/DamageIndicator';
 
 export default function Kamikaze() {
     const droneRef = useRef();
     const cameraFollowRef = useRef(new THREE.Vector3(0, 0, 0));
     const velocityRef = useRef(new THREE.Vector3(0, 0, 0));
     const propellersRefs = useRef([]);
+    const previousPositionRef = useRef(new THREE.Vector3(0, 10, 0)); // Store previous position for collision detection
+    const collisionOccurred = useRef(false); // Track if a collision has occurred
 
     // Initial rotation reference - with explicit YXZ rotation order
     const initialRotationRef = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
@@ -16,17 +21,48 @@ export default function Kamikaze() {
     const [position, setPosition] = useState([0, 10, 0]);
     const [propellersActive, setPropellersActive] = useState(false);
     const [propellersSpeed, setPropellersSpeed] = useState(0);
-    const { camera } = useThree();
+    const { camera, scene } = useThree();
     const [subscribeKeys, getKeys] = useKeyboardControls();
 
     const THRUST = 0.05;
-    const MAX_SPEED = 9.0;
-    const ROTATION_SPEED = 0.05;
+    const MAX_SPEED = 3.0;
+    const ROTATION_SPEED = 0.08;
     const FRICTION = 0.98;
     const GRAVITY = 0.003;
-    const LIFT_POWER = 0.08;
+    const LIFT_POWER = 0.06;
     const STRAFE_POWER = 0.04; // Power for strafing left/right
-    const DIVE_POWER = 0.015; // Power for slight downward movement with W
+    const DIVE_POWER = 0.020; // Power for slight downward movement with W
+
+    // Function to handle collision with a vehicle
+    const handleVehicleCollision = (hitPosition) => {
+        if (collisionOccurred.current) return; // Prevent multiple collisions
+
+        collisionOccurred.current = true;
+        console.log("Kamikaze drone collided with vehicle!");
+
+        // Trigger explosion at the collision point
+        triggerExplosion(hitPosition, WEAPON_TYPES.KAMIKAZE);
+
+        // Show damage indicator with the inner damage value from the KAMIKAZE weapon type
+        showDamageIndicator(hitPosition, 80); // Updated to show 80 damage
+
+        // Make drone inactive/invisible after collision
+        if (droneRef.current) {
+            droneRef.current.visible = false;
+        }
+
+        // Reset drone position after a delay (respawn)
+        setTimeout(() => {
+            if (droneRef.current) {
+                droneRef.current.position.set(0, 10, 0);
+                droneRef.current.visible = true;
+                collisionOccurred.current = false;
+                velocityRef.current.set(0, 0, 0);
+                setPosition([0, 10, 0]);
+                previousPositionRef.current.set(0, 10, 0);
+            }
+        }, 3000); // Respawn after 3 seconds
+    };
 
     useEffect(() => {
         // Setup camera initial position
@@ -59,7 +95,11 @@ export default function Kamikaze() {
     }, [camera, subscribeKeys]);
 
     useFrame((state, delta) => {
-        if (!droneRef.current) return;
+        if (!droneRef.current || collisionOccurred.current) return;
+
+        // Store previous position for collision detection
+        previousPositionRef.current.copy(droneRef.current.position);
+
         const { forward, backward, left, right, up, down, strafeLeft, strafeRight, shift } = getKeys();
         const rotation = droneRef.current.rotation.y;
         const forwardVector = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
@@ -108,6 +148,23 @@ export default function Kamikaze() {
         if (droneRef.current.position.y < 1) {
             droneRef.current.position.y = 1;
             velocityRef.current.y = 0;
+        }
+
+        // Check for collision with vehicles
+        if (scene && droneRef.current) {
+            // Create a projectile-like object for collision detection
+            const droneProjectile = {
+                position: droneRef.current.position.clone(),
+                previousPosition: previousPositionRef.current.clone(),
+                type: WEAPON_TYPES.KAMIKAZE
+            };
+
+            // Check for vehicle collision
+            const vehicleHit = checkProjectileVehicleCollision(droneProjectile, scene);
+            if (vehicleHit) {
+                handleVehicleCollision(vehicleHit.position);
+                return; // Skip the rest of the frame processing
+            }
         }
 
         // SIMPLIFIED QUATERNION-BASED TILTING APPROACH

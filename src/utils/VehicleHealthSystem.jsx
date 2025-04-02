@@ -93,7 +93,9 @@ export const VEHICLE_CATEGORY_MAP = {
     // Cars
     car_a: 'CAR',
     car_b: 'CAR',
-    car_c: 'CAR'
+    car_c: 'CAR',
+    car_d: 'CAR',
+    car_e: 'CAR'
 };
 
 // Zustand store for global health state management

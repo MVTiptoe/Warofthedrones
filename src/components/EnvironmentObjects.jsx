@@ -183,9 +183,9 @@ function generateFixedPositions(seed) {
     };
 
     // Generate fixed number of objects with deterministic positioning
-    addObject(trees, 'tree', 0, 700, MIN_DISTANCE);
-    addObject(rocks, 'rock', 10000, 200, MIN_DISTANCE / 3);
-    addObject(bushes, 'bush', 20000, 400, MIN_DISTANCE / 3);
+    addObject(trees, 'tree', 0, 600, MIN_DISTANCE);
+    addObject(rocks, 'rock', 10000, 150, MIN_DISTANCE / 3);
+    addObject(bushes, 'bush', 20000, 300, MIN_DISTANCE / 3);
 
     // Special large bush positioning (deterministic based on seed)
     const specialSeed = seed * 9876;

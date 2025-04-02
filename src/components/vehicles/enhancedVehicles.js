@@ -4,7 +4,7 @@ import {
     IFV_A, IFV_B,
     CivilianTruck1, CivilianTruck2, CivilianTruck3,
     MilitaryTruck1, MilitaryTruck2, MilitaryTruck3,
-    CarA, CarB, CarC
+    CarA, CarB, CarC, CarD, CarE
 } from './index';
 
 // Enhance individual vehicles with health system
@@ -25,6 +25,8 @@ export const EnhancedMilitaryTruck3 = withVehicleHealth(MilitaryTruck3, 'militar
 export const EnhancedCarA = withVehicleHealth(CarA, 'car_a');
 export const EnhancedCarB = withVehicleHealth(CarB, 'car_b');
 export const EnhancedCarC = withVehicleHealth(CarC, 'car_c');
+export const EnhancedCarD = withVehicleHealth(CarD, 'car_d');
+export const EnhancedCarE = withVehicleHealth(CarE, 'car_e');
 
 // Group vehicles by category
 export const EnhancedTanks = {
@@ -52,7 +54,9 @@ export const EnhancedMilitaryTrucks = [
 export const EnhancedCars = {
     CarA: EnhancedCarA,
     CarB: EnhancedCarB,
-    CarC: EnhancedCarC
+    CarC: EnhancedCarC,
+    CarD: EnhancedCarD,
+    CarE: EnhancedCarE
 };
 
 // Vehicle type mapping for dynamic usage with health-enhanced versions
@@ -78,7 +82,9 @@ export const EnhancedVehicleTypes = {
     // Cars
     car_a: EnhancedCarA,
     car_b: EnhancedCarB,
-    car_c: EnhancedCarC
+    car_c: EnhancedCarC,
+    car_d: EnhancedCarD,
+    car_e: EnhancedCarE
 };
 
 export default EnhancedVehicleTypes; 

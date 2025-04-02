@@ -12,7 +12,7 @@ const SPEED_MIN = 0.18;
 const SPEED_MAX = 0.25;
 
 // Number of vehicles to spawn per road
-const VEHICLES_PER_ROAD = 16;
+const VEHICLES_PER_ROAD = 11; // Reduced by ~30% from 16
 
 // Lane widths - now with 4 lanes per road
 const LANE_WIDTH = ROAD_WIDTH / 4; // Each road has 4 lanes now
@@ -24,7 +24,7 @@ const LANE_TYPES = {
 };
 
 // Vehicle dimensions (approximate average)
-const VEHICLE_LENGTH = 12; // Updated for 3x scale (was 8 for 2x scale)
+const VEHICLE_LENGTH = 16; // Updated for 4x scale (was 12 for 3x scale)
 const MINIMUM_DISTANCE = 40; // Minimum required distance between vehicles (40 meters)
 const COLUMN_VEHICLE_SPACING = 30; // Increased by 50% from 20 to 30 meters distance between vehicles in a column
 const SAFE_DISTANCE = Math.max(VEHICLE_LENGTH * 1.5, MINIMUM_DISTANCE); // Safe following distance, at least 40m
@@ -196,7 +196,7 @@ export default function VehiclesOnRoad() {
                             road: roadZ,
                             laneType: lane.type,
                             isInColumn: true,
-                            hitbox: { width: 1.0, height: 1.0, depth: 3.0 }
+                            hitbox: { width: 1.33, height: 1.33, depth: 4.0 }
                         });
 
                         // Move to next vehicle position (subtract for negative direction)
@@ -211,7 +211,7 @@ export default function VehiclesOnRoad() {
                 const vehiclesPerLane = VEHICLES_PER_ROAD / 2; // Split evenly between slow lanes
 
                 for (let i = 0; i < vehiclesPerLane; i++) {
-                    // Randomly choose between car and civilian truck
+                    // Randomly choose between car and civilian truck (adjusted ratio)
                     const vehicleType = Math.random() < 0.7 ?
                         getRandomVehicleOfType('car') :
                         getRandomVehicleOfType('civilian_truck');
@@ -940,7 +940,7 @@ export default function VehiclesOnRoad() {
                     road: roadZ,
                     laneType: LANE_TYPES.FAST,
                     isInColumn: true,
-                    hitbox: { width: 1.0, height: 1.0, depth: 3.0 }
+                    hitbox: { width: 1.33, height: 1.33, depth: 4.0 }
                 });
 
                 // Move to next vehicle position
@@ -973,9 +973,9 @@ export default function VehiclesOnRoad() {
                             isInColumn: vehicle.isInColumn,
                             columnId: vehicle.columnId,
                             hitbox: {
-                                width: 3.0,
-                                height: 1.5,
-                                depth: 5.0
+                                width: 4.0,
+                                height: 2.0,
+                                depth: 6.6
                             }
                         }}
                         name={`vehicle-${vehicle.id}`}
@@ -983,7 +983,7 @@ export default function VehiclesOnRoad() {
                         {/* Enhanced Vehicle Type Component with hitbox information */}
                         <VehicleComponent
                             id={vehicle.id}
-                            scale={[3, 3, 3]}
+                            scale={[4, 4, 4]}
                             userData={{
                                 vehicleId: vehicle.id,
                                 vehicleType: vehicle.type,
@@ -1002,9 +1002,9 @@ export default function VehiclesOnRoad() {
                                 }}
                             >
                                 <boxGeometry args={[
-                                    vehicle.hitbox?.depth || 3.0,
-                                    vehicle.hitbox?.height || 1.0,
-                                    vehicle.hitbox?.width || 1.0
+                                    vehicle.hitbox?.depth || 4.0,
+                                    vehicle.hitbox?.height || 1.33,
+                                    vehicle.hitbox?.width || 1.33
                                 ]} />
                                 <meshBasicMaterial color="red" wireframe={true} opacity={0.5} transparent={true} />
                             </mesh>

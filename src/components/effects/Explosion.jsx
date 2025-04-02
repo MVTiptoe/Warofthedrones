@@ -79,6 +79,14 @@ const explosionProperties = {
         lightIntensity: 1,
         lightColor: 0xFFFFAA
     },
+    [WEAPON_TYPES.KAMIKAZE]: {
+        fireballColor: new THREE.Color(0xFF0000), // Bright red fireball
+        smokeColor: new THREE.Color(0x222222), // Dark smoke
+        debrisColor: new THREE.Color(0x666666), // Medium gray debris
+        dustColor: new THREE.Color(0x998866), // Dusty brown
+        lightIntensity: 3.5, // Very bright
+        lightColor: 0xFF1100 // Red-orange light
+    },
     default: {
         fireballColor: new THREE.Color(0xFF4500),
         smokeColor: new THREE.Color(0x333333),

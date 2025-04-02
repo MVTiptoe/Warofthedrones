@@ -3,10 +3,13 @@ import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 
-export default function DamageIndicator({ position, damage, duration = 60 }) {
+export default function DamageIndicator({ position, damage = 0, duration = 60 }) {
     const groupRef = useRef();
     const [lifespan, setLifespan] = useState(duration);
     const [offset, setOffset] = useState(0);
+
+    // Ensure damage is a number
+    const damageValue = typeof damage === 'number' ? damage : 0;
 
     // Animation effect - float upward and fade out
     useFrame(() => {
@@ -43,7 +46,7 @@ export default function DamageIndicator({ position, damage, duration = 60 }) {
             lookAt={[position.x, position.y + 10, position.z - 5]} // Always face camera
         >
             <Text
-                color={damage >= 15 ? "red" : damage >= 10 ? "orange" : "yellow"}
+                color={damageValue >= 15 ? "red" : damageValue >= 10 ? "orange" : "yellow"}
                 fontSize={0.5}
                 anchorX="center"
                 anchorY="middle"
@@ -51,7 +54,7 @@ export default function DamageIndicator({ position, damage, duration = 60 }) {
                 outlineColor="#000000"
                 material-transparent={true}
             >
-                {damage.toFixed(0)}
+                {damageValue.toFixed(0)}
             </Text>
         </group>
     );
@@ -109,10 +112,13 @@ export function DamageIndicatorsManager() {
 
 // Helper function to trigger a damage indicator
 export function showDamageIndicator(position, damage) {
+    // Ensure damage is a number with a default value of 0
+    const damageValue = typeof damage === 'number' ? damage : 0;
+
     const event = new CustomEvent('damage-dealt', {
         detail: {
             position: position.clone(),
-            damage
+            damage: damageValue
         }
     });
 
