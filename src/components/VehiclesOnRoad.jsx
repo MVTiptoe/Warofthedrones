@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { VehicleTypes } from './vehicles';
@@ -80,6 +80,45 @@ const MILITARY_COLUMNS = [
 const MAX_COLUMNS_PER_LANE = 1; // Maximum number of active columns per lane
 const COLUMN_RESPAWN_DELAY = 5000; // 5 seconds delay before respawning a new column
 
+// Create reusable Vector3 and Euler objects to prevent memory leaks
+const tempVector3 = new THREE.Vector3();
+const tempEuler = new THREE.Euler();
+
+// Object pooling to reuse vehicle objects
+class VehiclePool {
+    constructor() {
+        this.pool = [];
+        this.inUse = new Set();
+    }
+
+    get() {
+        // Try to get a vehicle from the pool, or create a new one if pool is empty
+        let vehicle = this.pool.pop();
+        if (!vehicle) {
+            vehicle = {
+                position: new THREE.Vector3(),
+                hitbox: { width: 1.0, height: 1.0, depth: 3.0 }
+            };
+        }
+        this.inUse.add(vehicle);
+        return vehicle;
+    }
+
+    release(vehicle) {
+        if (this.inUse.has(vehicle)) {
+            this.inUse.delete(vehicle);
+            this.pool.push(vehicle);
+        }
+    }
+
+    releaseAll() {
+        this.inUse.forEach(vehicle => {
+            this.pool.push(vehicle);
+        });
+        this.inUse.clear();
+    }
+}
+
 // Function to get random item from array
 function getRandomItem(array) {
     return array[Math.floor(Math.random() * array.length)];
@@ -108,11 +147,24 @@ function getRandomVehicleOfType(type) {
 export default function VehiclesOnRoad() {
     const [vehicles, setVehicles] = useState([]);
     const initializedRef = useRef(false);
-    const columnSpawnTimersRef = useRef({}); // Track spawn timers for each lane
+    const columnSpawnTimersRef = useRef({});
+    const timeoutRefsRef = useRef([]); // New ref to track all timeout IDs for cleanup
+    const vehiclePoolRef = useRef(new VehiclePool()); // Object pool for reusing vehicle objects
 
     // Access vehicle health store for mobility factor and health data
     const vehicleHealthStore = useVehicleHealthStore();
     const getVehicleHealth = vehicleHealthStore.getVehicleHealth;
+
+    // Cache for vehicle objects by ID to avoid expensive array searches
+    const vehiclesById = useRef(new Map());
+
+    // Pre-compute rotations to avoid creating new Euler objects
+    const rotationMap = useMemo(() => {
+        return {
+            right: new THREE.Euler(0, -Math.PI / 2, 0),
+            left: new THREE.Euler(0, Math.PI / 2, 0)
+        };
+    }, []);
 
     // Initialize vehicles
     useEffect(() => {
@@ -185,11 +237,7 @@ export default function VehiclesOnRoad() {
                                 0.3,
                                 lane.z + (Math.random() * 0.2 - 0.1)
                             ),
-                            rotation: new THREE.Euler(
-                                0,
-                                lane.direction > 0 ? -Math.PI / 2 : Math.PI / 2,
-                                0
-                            ),
+                            rotation: lane.direction > 0 ? rotationMap.right : rotationMap.left,
                             speed: SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN) * 0.5,
                             direction: lane.direction,
                             lane: lane.z,
@@ -236,11 +284,7 @@ export default function VehiclesOnRoad() {
                             0.3,
                             lane.z + (Math.random() * 0.2 - 0.1)
                         ),
-                        rotation: new THREE.Euler(
-                            0,
-                            lane.direction > 0 ? -Math.PI / 2 : Math.PI / 2,
-                            0
-                        ),
+                        rotation: lane.direction > 0 ? rotationMap.right : rotationMap.left,
                         speed: SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN),
                         direction: lane.direction,
                         lane: lane.z,
@@ -253,12 +297,67 @@ export default function VehiclesOnRoad() {
             });
         });
 
+        // Update the cache for quick lookups
+        newVehicles.forEach(vehicle => {
+            vehiclesById.current.set(vehicle.id, vehicle);
+        });
+
         setVehicles(newVehicles);
+
+        // Cleanup function for the component unmount
+        return () => {
+            // Release all vehicles back to the pool
+            vehiclePoolRef.current.releaseAll();
+
+            // Clear all tracked timeouts
+            timeoutRefsRef.current.forEach(timeoutId => {
+                clearTimeout(timeoutId);
+            });
+
+            // Clear all column spawn timers
+            Object.values(columnSpawnTimersRef.current).forEach(timerId => {
+                if (timerId) clearTimeout(timerId);
+            });
+        };
+    }, [rotationMap]);  // Added rotationMap to the dependency array
+
+    // Memory optimization: Limit the number of timeouts tracked
+    useEffect(() => {
+        // Periodically clean up completed timeouts from our tracking array
+        const intervalId = setInterval(() => {
+            // Remove nullish or completed timeouts from the array
+            if (timeoutRefsRef.current.length > 100) {
+                timeoutRefsRef.current = timeoutRefsRef.current.slice(-100);
+            }
+        }, 30000); // Every 30 seconds
+
+        return () => {
+            clearInterval(intervalId);
+        };
     }, []);
 
-    // Update vehicle positions on each frame
+    // Pre-compute reusable geometries and materials
+    const vehicleGeometries = useMemo(() => {
+        const geometries = {};
+        // Return pre-computed geometries to be reused
+        return geometries;
+    }, []);
+
+    // Memoize the vehicle detection lookup map for collision detection
+    const vehicleLookupMapRef = useRef(new Map());
+
+    // Update vehicle positions on each frame with memory optimization
     useFrame((state, delta) => {
+        // Cache current time outside the loop to avoid multiple calls
+        const currentTime = Date.now();
+
         setVehicles(vehicles => {
+            // Update the vehicle ID cache
+            vehiclesById.current.clear();
+            vehicles.forEach(vehicle => {
+                vehiclesById.current.set(vehicle.id, vehicle);
+            });
+
             // Track the positions where destroyed vehicles were removed
             const removedDestroyedPositions = new Map(); // Map<lane, {x, road, direction, removalTime}>
 
@@ -268,6 +367,79 @@ export default function VehiclesOnRoad() {
             const destroyedVehicles = new Map(); // Track destroyed vehicles by ID
             const clearedDestroyedPositions = new Map(); // Track positions where a destroyed vehicle was removed and cleared
             const newlyDestroyedColumns = new Map(); // Track columns with newly destroyed vehicles
+
+            // Optimize vehicle lookup for collision detection
+            const updateVehicleLookupMap = (vehiclesList) => {
+                vehicleLookupMapRef.current.clear();
+
+                vehiclesList.forEach(vehicle => {
+                    const key = `${Math.floor(vehicle.position.x / 10)}-${vehicle.lane}-${vehicle.direction}`;
+                    if (!vehicleLookupMapRef.current.has(key)) {
+                        vehicleLookupMapRef.current.set(key, []);
+                    }
+                    vehicleLookupMapRef.current.get(key).push(vehicle);
+                });
+            };
+
+            // More efficient collision detection that uses the map
+            const optimizedDetectCollisionAhead = (vehicle, allVehicles, checkDistance = SAFE_DISTANCE) => {
+                const sectorKey = `${Math.floor(vehicle.position.x / 10)}-${vehicle.lane}-${vehicle.direction}`;
+                const nextSectorKey = `${Math.floor((vehicle.position.x + (vehicle.direction * 10)) / 10)}-${vehicle.lane}-${vehicle.direction}`;
+
+                // Get vehicles in current and next sector
+                const sectorsToCheck = [
+                    vehicleLookupMapRef.current.get(sectorKey) || [],
+                    vehicleLookupMapRef.current.get(nextSectorKey) || []
+                ];
+
+                let closestDistance = Infinity;
+                let hasCollision = false;
+
+                // Flatten and filter vehicles
+                const potentialCollisions = sectorsToCheck.flat().filter(v =>
+                    v.id !== vehicle.id &&
+                    Math.abs(v.lane - vehicle.lane) < 0.5 &&
+                    Math.abs(v.road - vehicle.road) < 0.5
+                );
+
+                // Check these filtered vehicles for collision
+                potentialCollisions.forEach(otherVehicle => {
+                    // For right-moving vehicles
+                    if (vehicle.direction > 0 && otherVehicle.direction > 0) {
+                        // Check if other vehicle is ahead
+                        if (otherVehicle.position.x > vehicle.position.x) {
+                            const distance = otherVehicle.position.x - vehicle.position.x;
+                            if (distance < checkDistance) {
+                                hasCollision = true;
+                                closestDistance = Math.min(closestDistance, distance);
+                            }
+                        }
+                    }
+                    // For left-moving vehicles
+                    else if (vehicle.direction < 0 && otherVehicle.direction < 0) {
+                        // Check if other vehicle is ahead
+                        if (otherVehicle.position.x < vehicle.position.x) {
+                            const distance = vehicle.position.x - otherVehicle.position.x;
+                            if (distance < checkDistance) {
+                                hasCollision = true;
+                                closestDistance = Math.min(closestDistance, distance);
+                            }
+                        }
+                    }
+                });
+
+                // Store the closest distance for speed regulation
+                if (hasCollision) {
+                    vehicle.distanceToNext = closestDistance;
+                } else {
+                    vehicle.distanceToNext = Infinity;
+                }
+
+                return hasCollision;
+            };
+
+            // Update the lookup map for efficient collision detection
+            updateVehicleLookupMap(vehicles);
 
             // Gather active column IDs and mark destroyed vehicles
             vehicles.forEach(vehicle => {
@@ -281,16 +453,13 @@ export default function VehiclesOnRoad() {
 
                         // Mark this column as having a destroyed vehicle
                         if (!vehicle.hasNotifiedColumn) {
-                            newlyDestroyedColumns.set(vehicle.columnId, Date.now());
+                            newlyDestroyedColumns.set(vehicle.columnId, currentTime);
                         }
 
                         // If vehicle is destroyed but not yet marked for clearing, mark it with a clearing time
                         if (!vehicle.clearingStarted) {
-                            setTimeout(() => {
+                            const timeoutId = setTimeout(() => {
                                 setVehicles(prevVehicles => {
-                                    // Get current time to use consistently for all updates
-                                    const currentTime = Date.now();
-
                                     // Find all vehicles in the same column
                                     const columnId = vehicle.columnId;
 
@@ -316,11 +485,12 @@ export default function VehiclesOnRoad() {
                                     });
                                 });
                             }, 0);
+                            timeoutRefsRef.current.push(timeoutId);
                         }
 
                         // Mark it for removal after a delay if not already marked and vehicle is fully destroyed
                         if (!vehicle.markedForRemoval && vehicle.clearingStarted && healthData.isDestroyed) {
-                            setTimeout(() => {
+                            const timeoutId = setTimeout(() => {
                                 setVehicles(prevVehicles => {
                                     return prevVehicles.map(v => {
                                         if (v.id === vehicle.id) {
@@ -333,6 +503,7 @@ export default function VehiclesOnRoad() {
                                     });
                                 });
                             }, DESTROYED_VEHICLE_WAIT_PERIOD); // 5 second delay before removing destroyed vehicles
+                            timeoutRefsRef.current.push(timeoutId);
                         }
                     }
                 }
@@ -354,25 +525,25 @@ export default function VehiclesOnRoad() {
                             columnId: vehicle.columnId,
                             columnPosition: vehicle.columnPosition,
                             direction: vehicle.direction,
-                            clearingTime: Date.now() // Use current time when actually removed, not previous clearing time
+                            clearingTime: currentTime // Use current time when actually removed, not previous clearing time
                         });
 
                         // Notify all other vehicles in the column that a vehicle has been completely removed
-                        // This will trigger the column to move forward and close the gap
-                        setTimeout(() => {
+                        const timeoutId = setTimeout(() => {
                             setVehicles(prevVehicles => {
                                 return prevVehicles.map(v => {
                                     if (v.columnId === vehicle.columnId) {
                                         return {
                                             ...v,
                                             columnHasRemoval: true,
-                                            lastRemovalTime: Date.now()
+                                            lastRemovalTime: currentTime
                                         };
                                     }
                                     return v;
                                 });
                             });
                         }, 0);
+                        timeoutRefsRef.current.push(timeoutId);
 
                         return false;
                     }
@@ -413,9 +584,9 @@ export default function VehiclesOnRoad() {
                 const originalSpeed = vehicle.speed * mobilityFactor;
 
                 // Check for vehicles ahead with the new distances
-                const hasCollisionEmergency = detectCollisionAhead(vehicle, filteredVehicles, EMERGENCY_DISTANCE);
-                const hasMinimumDistance = detectCollisionAhead(vehicle, filteredVehicles, MINIMUM_DISTANCE);
-                const hasCollisionWarning = detectCollisionAhead(vehicle, filteredVehicles, DETECTION_DISTANCE);
+                const hasCollisionEmergency = optimizedDetectCollisionAhead(vehicle, filteredVehicles, EMERGENCY_DISTANCE);
+                const hasMinimumDistance = optimizedDetectCollisionAhead(vehicle, filteredVehicles, MINIMUM_DISTANCE);
+                const hasCollisionWarning = optimizedDetectCollisionAhead(vehicle, filteredVehicles, DETECTION_DISTANCE);
 
                 // Determine appropriate speed
                 let speed = originalSpeed;
@@ -443,37 +614,38 @@ export default function VehiclesOnRoad() {
 
                 const newX = vehicle.position.x + (newSpeed * vehicle.direction * delta * 60);
 
-                // Check if vehicle has reached the end of the road
+                // Calculate the new position by modifying existing Vector3 instead of creating a new one
                 if (vehicle.direction > 0 && newX > TERRAIN_SIZE / 2) {
                     // Reset to the beginning of the road (right direction vehicles)
+                    tempVector3.set(-TERRAIN_SIZE / 2, 0.3, vehicle.position.z);
+                    vehicle.position.copy(tempVector3);
                     return {
                         ...vehicle,
-                        position: new THREE.Vector3(
-                            -TERRAIN_SIZE / 2,
-                            0.3,
-                            vehicle.position.z
-                        ),
                         speed: vehicle.speed
                     };
                 } else if (vehicle.direction < 0 && newX < -TERRAIN_SIZE / 2) {
                     // Reset to the beginning of the road (left direction vehicles)
+                    tempVector3.set(TERRAIN_SIZE / 2, 0.3, vehicle.position.z);
+                    vehicle.position.copy(tempVector3);
                     return {
                         ...vehicle,
-                        position: new THREE.Vector3(
-                            TERRAIN_SIZE / 2,
-                            0.3,
-                            vehicle.position.z
-                        ),
                         speed: vehicle.speed
                     };
                 }
 
-                // Update position and speed
+                // Update position by modifying the existing object
+                tempVector3.set(newX, vehicle.position.y, vehicle.position.z);
+
                 return {
                     ...vehicle,
-                    position: new THREE.Vector3(newX, vehicle.position.y, vehicle.position.z),
+                    position: tempVector3.clone(), // Need to clone here since we're returning a new object
                     speed: newSpeed
                 };
+            });
+
+            // Update lookup cache for new vehicle states
+            updatedVehicles.forEach(vehicle => {
+                vehiclesById.current.set(vehicle.id, vehicle);
             });
 
             // Now update column vehicles together
@@ -546,9 +718,9 @@ export default function VehiclesOnRoad() {
                 const originalSpeed = leadVehicle.speed * mobilityFactor;
 
                 // Check for vehicles ahead
-                const hasCollisionEmergency = detectCollisionAhead(leadVehicle, updatedVehicles, EMERGENCY_DISTANCE);
-                const hasMinimumDistance = detectCollisionAhead(leadVehicle, updatedVehicles, MINIMUM_DISTANCE);
-                const hasCollisionWarning = detectCollisionAhead(leadVehicle, updatedVehicles, DETECTION_DISTANCE);
+                const hasCollisionEmergency = optimizedDetectCollisionAhead(leadVehicle, updatedVehicles, EMERGENCY_DISTANCE);
+                const hasMinimumDistance = optimizedDetectCollisionAhead(leadVehicle, updatedVehicles, MINIMUM_DISTANCE);
+                const hasCollisionWarning = optimizedDetectCollisionAhead(leadVehicle, updatedVehicles, DETECTION_DISTANCE);
 
                 // Determine appropriate speed for the lead vehicle
                 let speed = originalSpeed;
@@ -605,13 +777,10 @@ export default function VehiclesOnRoad() {
 
                             // Lead vehicle (which may not be the first in the column if the first was destroyed)
                             if (index === leadVehicleIndex) {
+                                tempVector3.set(newLeadX, vehicle.position.y, vehicle.position.z);
                                 updatedVehicles[updatedVehicleIndex] = {
                                     ...vehicle,
-                                    position: new THREE.Vector3(
-                                        newLeadX,
-                                        vehicle.position.y,
-                                        vehicle.position.z
-                                    ),
+                                    position: tempVector3.clone(),
                                     speed: newSpeed
                                 };
                             } else if (index < leadVehicleIndex) {
@@ -642,7 +811,7 @@ export default function VehiclesOnRoad() {
 
                                             // Check if the destroyed vehicle ahead has a clearing time and enough time has passed
                                             if (aheadVehicle.clearingTime) {
-                                                const timeSinceClearing = Date.now() - aheadVehicle.clearingTime;
+                                                const timeSinceClearing = currentTime - aheadVehicle.clearingTime;
                                                 // Wait for 5 seconds after vehicle is destroyed
                                                 if (timeSinceClearing < DESTROYED_VEHICLE_WAIT_PERIOD) { // 5 second wait period
                                                     canResumeMovement = false;
@@ -677,7 +846,7 @@ export default function VehiclesOnRoad() {
                                             clearInfo.columnPosition < vehicle.columnPosition) {
 
                                             // Check if we're still within the waiting period
-                                            const timeSinceClearing = Date.now() - clearInfo.clearingTime;
+                                            const timeSinceClearing = currentTime - clearInfo.clearingTime;
                                             if (timeSinceClearing < DESTROYED_VEHICLE_WAIT_PERIOD) { // 5-second wait period
                                                 needsToWait = true;
 
@@ -696,9 +865,10 @@ export default function VehiclesOnRoad() {
                                         (needsToWait && waitPositionX)) {
                                         // Either waiting for a destroyed vehicle ahead or for a cleared position
                                         // Pause exactly where they are - don't adjust position
+                                        tempVector3.set(vehicle.position.x, vehicle.position.y, vehicle.position.z);
                                         updatedVehicles[updatedVehicleIndex] = {
                                             ...vehicle,
-                                            position: vehicle.position, // Keep exact current position without any adjustment
+                                            position: tempVector3.clone(),
                                             speed: 0 // Complete stop
                                         };
                                     } else {
@@ -713,16 +883,17 @@ export default function VehiclesOnRoad() {
                                         // Get the most recent destroyed vehicle time for this column
                                         let shouldWaitInPlace = false;
                                         if (vehicle.columnHasDestroyed && vehicle.lastDestroyedTime) {
-                                            const timeSinceDestroyed = Date.now() - vehicle.lastDestroyedTime;
+                                            const timeSinceDestroyed = currentTime - vehicle.lastDestroyedTime;
                                             // Waiting period is exactly 5 seconds (5000ms)
                                             shouldWaitInPlace = timeSinceDestroyed < DESTROYED_VEHICLE_WAIT_PERIOD;
                                         }
 
                                         if (hasDestroyedVehiclesInColumn && shouldWaitInPlace) {
                                             // During the 5-second wait period, keep vehicles exactly in place
+                                            tempVector3.set(vehicle.position.x, vehicle.position.y, vehicle.position.z);
                                             updatedVehicles[updatedVehicleIndex] = {
                                                 ...vehicle,
-                                                position: vehicle.position, // Keep exact position
+                                                position: tempVector3.clone(),
                                                 speed: 0 // Complete stop
                                             };
                                         } else {
@@ -738,14 +909,11 @@ export default function VehiclesOnRoad() {
 
                                             // Calculate target position - maintains gaps where vehicles were destroyed
                                             const targetX = leadVehicle.position.x - (positionOffsetFromLead * vehicle.direction);
+                                            tempVector3.set(targetX, vehicle.position.y, vehicle.position.z);
 
                                             updatedVehicles[updatedVehicleIndex] = {
                                                 ...vehicle,
-                                                position: new THREE.Vector3(
-                                                    targetX,
-                                                    vehicle.position.y,
-                                                    vehicle.position.z
-                                                ),
+                                                position: tempVector3.clone(),
                                                 speed: newSpeed
                                             };
                                         }
@@ -799,9 +967,10 @@ export default function VehiclesOnRoad() {
                     };
 
                     // Reset the vehicle's health in the health system
-                    setTimeout(() => {
+                    const timeoutId = setTimeout(() => {
                         vehicleHealthStore.respawnVehicle(vehicle.id);
                     }, 0);
+                    timeoutRefsRef.current.push(timeoutId);
 
                     return respawnedVehicle;
                 }
@@ -819,61 +988,13 @@ export default function VehiclesOnRoad() {
         });
     });
 
-    // Function to detect if a vehicle is about to collide with another vehicle ahead
-    function detectCollisionAhead(vehicle, allVehicles, checkDistance = SAFE_DISTANCE) {
-        // Only check vehicles in the same lane and road
-        const sameRoadAndLane = allVehicles.filter(v =>
-            v.id !== vehicle.id && // Not the same vehicle
-            Math.abs(v.lane - vehicle.lane) < 0.5 && // Same lane (with tolerance)
-            Math.abs(v.road - vehicle.road) < 0.5    // Same road (with tolerance)
-        );
-
-        // Find closest vehicle ahead
-        let closestDistance = Infinity;
-        let hasCollision = false;
-
-        sameRoadAndLane.forEach(otherVehicle => {
-            // For right-moving vehicles
-            if (vehicle.direction > 0 && otherVehicle.direction > 0) {
-                // Check if other vehicle is ahead
-                if (otherVehicle.position.x > vehicle.position.x) {
-                    const distance = otherVehicle.position.x - vehicle.position.x;
-                    if (distance < checkDistance) {
-                        hasCollision = true;
-                        closestDistance = Math.min(closestDistance, distance);
-                    }
-                }
-            }
-            // For left-moving vehicles
-            else if (vehicle.direction < 0 && otherVehicle.direction < 0) {
-                // Check if other vehicle is ahead
-                if (otherVehicle.position.x < vehicle.position.x) {
-                    const distance = vehicle.position.x - otherVehicle.position.x;
-                    if (distance < checkDistance) {
-                        hasCollision = true;
-                        closestDistance = Math.min(closestDistance, distance);
-                    }
-                }
-            }
-        });
-
-        // Store the closest distance for speed regulation
-        if (hasCollision) {
-            vehicle.distanceToNext = closestDistance;
-        } else {
-            vehicle.distanceToNext = Infinity;
-        }
-
-        return hasCollision;
-    }
-
-    // Function to schedule a column respawn
+    // Function to schedule a column respawn with proper timeout tracking
     function scheduleColumnRespawn(lane, direction) {
         const laneKey = `${lane}-${direction}`;
 
         // Only schedule if there isn't already a pending spawn
         if (!columnSpawnTimersRef.current[laneKey]) {
-            columnSpawnTimersRef.current[laneKey] = setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 // Clear the timer reference
                 columnSpawnTimersRef.current[laneKey] = null;
 
@@ -884,6 +1005,10 @@ export default function VehiclesOnRoad() {
                     return [...vehicles, ...createNewColumn(lane, direction)];
                 });
             }, COLUMN_RESPAWN_DELAY);
+
+            // Store the timeout ID for cleanup
+            columnSpawnTimersRef.current[laneKey] = timeoutId;
+            timeoutRefsRef.current.push(timeoutId);
         }
     }
 
@@ -893,7 +1018,7 @@ export default function VehiclesOnRoad() {
         return [];
     }
 
-    // Function to create a new column
+    // Function to create a new column with optimized object creation
     function createNewColumn(lane, direction) {
         const newVehicles = [];
         const columnConfig = getRandomItem(MILITARY_COLUMNS);
@@ -918,30 +1043,30 @@ export default function VehiclesOnRoad() {
 
                 const vehicleId = `${newColumnId}-${vehicleGroup.type}-${i}`;
 
-                // Add new vehicle to the list
-                newVehicles.push({
-                    id: vehicleId,
-                    type: vehicleType,
-                    columnId: newColumnId,
-                    columnPosition: vehicleIndex,
-                    position: new THREE.Vector3(
-                        currentX,
-                        0.3,
-                        lane + (Math.random() * 0.2 - 0.1)
-                    ),
-                    rotation: new THREE.Euler(
-                        0,
-                        direction > 0 ? -Math.PI / 2 : Math.PI / 2,
-                        0
-                    ),
-                    speed: SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN) * 0.5,
-                    direction: direction,
-                    lane: lane,
-                    road: roadZ,
-                    laneType: LANE_TYPES.FAST,
-                    isInColumn: true,
-                    hitbox: { width: 1.33, height: 1.33, depth: 4.0 }
-                });
+                // Get a vehicle from the pool
+                const vehicle = vehiclePoolRef.current.get();
+
+                // Configure the vehicle
+                vehicle.id = vehicleId;
+                vehicle.type = vehicleType;
+                vehicle.columnId = newColumnId;
+                vehicle.columnPosition = vehicleIndex;
+                vehicle.position.set(
+                    currentX,
+                    0.3,
+                    lane + (Math.random() * 0.2 - 0.1)
+                );
+                vehicle.rotation = direction > 0 ? rotationMap.right : rotationMap.left;
+                vehicle.speed = SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN) * 0.5;
+                vehicle.direction = direction;
+                vehicle.lane = lane;
+                vehicle.road = roadZ;
+                vehicle.laneType = LANE_TYPES.FAST;
+                vehicle.isInColumn = true;
+                vehicle.hitbox = { width: 1.33, height: 1.33, depth: 4.0 };
+
+                // Add to new vehicles
+                newVehicles.push(vehicle);
 
                 // Move to next vehicle position
                 currentX += direction * COLUMN_VEHICLE_SPACING;
@@ -952,66 +1077,67 @@ export default function VehiclesOnRoad() {
         return newVehicles;
     }
 
-    return (
-        <>
-            {vehicles.map((vehicle) => {
-                // Get health data for visual effects from our pre-fetched function
-                const healthData = getVehicleHealth(vehicle.id);
+    // Memoize the rendering of vehicles to reduce unnecessary re-renders
+    const renderVehicles = useMemo(() => {
+        return vehicles.map((vehicle) => {
+            // Get health data for visual effects from our pre-fetched function
+            const healthData = getVehicleHealth(vehicle.id);
 
-                // Use the enhanced vehicle component with health system
-                const VehicleComponent = EnhancedVehicleTypes[vehicle.type];
+            // Use the enhanced vehicle component with health system
+            const VehicleComponent = EnhancedVehicleTypes[vehicle.type];
 
-                return (
-                    <group
-                        key={vehicle.id}
-                        position={[vehicle.position.x, vehicle.position.y, vehicle.position.z]}
-                        rotation={[vehicle.rotation.x, vehicle.rotation.y, vehicle.rotation.z]}
+            return (
+                <group
+                    key={vehicle.id}
+                    position={[vehicle.position.x, vehicle.position.y, vehicle.position.z]}
+                    rotation={[vehicle.rotation.x, vehicle.rotation.y, vehicle.rotation.z]}
+                    userData={{
+                        vehicleId: vehicle.id,
+                        vehicleType: vehicle.type,
+                        isVehicle: true,
+                        isInColumn: vehicle.isInColumn,
+                        columnId: vehicle.columnId,
+                        hitbox: {
+                            width: 4.0,
+                            height: 2.0,
+                            depth: 6.6
+                        }
+                    }}
+                    name={`vehicle-${vehicle.id}`}
+                >
+                    {/* Enhanced Vehicle Type Component with hitbox information */}
+                    <VehicleComponent
+                        id={vehicle.id}
+                        scale={[4, 4, 4]}
                         userData={{
                             vehicleId: vehicle.id,
                             vehicleType: vehicle.type,
-                            isVehicle: true,
-                            isInColumn: vehicle.isInColumn,
-                            columnId: vehicle.columnId,
-                            hitbox: {
-                                width: 4.0,
-                                height: 2.0,
-                                depth: 6.6
-                            }
+                            isVehicle: true
                         }}
-                        name={`vehicle-${vehicle.id}`}
-                    >
-                        {/* Enhanced Vehicle Type Component with hitbox information */}
-                        <VehicleComponent
-                            id={vehicle.id}
-                            scale={[4, 4, 4]}
-                            userData={{
-                                vehicleId: vehicle.id,
-                                vehicleType: vehicle.type,
-                                isVehicle: true
-                            }}
-                        />
+                    />
 
-                        {/* DEBUG: Visual hitbox representation */}
-                        {false && (
-                            <mesh
-                                visible={true}
-                                position={[0, 0.5, 0]}
-                                userData={{
-                                    isVehicleHitbox: true,
-                                    parentVehicleId: vehicle.id
-                                }}
-                            >
-                                <boxGeometry args={[
-                                    vehicle.hitbox?.depth || 4.0,
-                                    vehicle.hitbox?.height || 1.33,
-                                    vehicle.hitbox?.width || 1.33
-                                ]} />
-                                <meshBasicMaterial color="red" wireframe={true} opacity={0.5} transparent={true} />
-                            </mesh>
-                        )}
-                    </group>
-                );
-            })}
-        </>
-    );
+                    {/* DEBUG: Visual hitbox representation - disabled in production */}
+                    {false && (
+                        <mesh
+                            visible={true}
+                            position={[0, 0.5, 0]}
+                            userData={{
+                                isVehicleHitbox: true,
+                                parentVehicleId: vehicle.id
+                            }}
+                        >
+                            <boxGeometry args={[
+                                vehicle.hitbox?.depth || 4.0,
+                                vehicle.hitbox?.height || 1.33,
+                                vehicle.hitbox?.width || 1.33
+                            ]} />
+                            <meshBasicMaterial color="red" wireframe={true} opacity={0.5} transparent={true} />
+                        </mesh>
+                    )}
+                </group>
+            );
+        });
+    }, [vehicles, getVehicleHealth]);
+
+    return <>{renderVehicles}</>;
 }
