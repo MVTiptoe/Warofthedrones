@@ -1,15 +1,8 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import '../../styles/drone.css';
-import { WEAPON_TYPES, checkProjectileVehicleCollision } from '../../utils/WeaponPhysics';
-import { triggerExplosion } from '../effects/ExplosionsManager';
-import { showDamageIndicator } from '../effects/DamageIndicator';
-import { useVehicleHealthStore } from '../../utils/VehicleHealthSystem';
-
-// Define the Kamikaze drone weapon type
-const KAMIKAZE_WEAPON_TYPE = 'KAMIKAZE_DRONE';
 
 export default function Kamikaze() {
     const droneRef = useRef();
@@ -23,23 +16,8 @@ export default function Kamikaze() {
     const [position, setPosition] = useState([0, 10, 0]);
     const [propellersActive, setPropellersActive] = useState(false);
     const [propellersSpeed, setPropellersSpeed] = useState(0);
-    const { camera, scene } = useThree();
+    const { camera } = useThree();
     const [subscribeKeys, getKeys] = useKeyboardControls();
-
-    // Kamikaze mode state
-    const [kamikazeMode, setKamikazeMode] = useState(false);
-    const [kamikazeSpeed, setKamikazeSpeed] = useState(0);
-    const [kamikazeDirection, setKamikazeDirection] = useState(new THREE.Vector3());
-    const [isDestroyed, setIsDestroyed] = useState(false);
-
-    // Kamikaze damage parameters
-    const KAMIKAZE_INNER_RADIUS = 15;
-    const KAMIKAZE_OUTER_RADIUS = 30;
-    const KAMIKAZE_INNER_DAMAGE = 100;
-    const KAMIKAZE_OUTER_DAMAGE = 40;
-
-    // Access vehicle health store for damage application
-    const applyDamage = useVehicleHealthStore(state => state.applyDamage);
 
     const THRUST = 0.05;
     const MAX_SPEED = 9.0;
@@ -49,7 +27,6 @@ export default function Kamikaze() {
     const LIFT_POWER = 0.08;
     const STRAFE_POWER = 0.04; // Power for strafing left/right
     const DIVE_POWER = 0.015; // Power for slight downward movement with W
-    const KAMIKAZE_MAX_SPEED = 20.0; // Maximum speed for kamikaze mode
 
     useEffect(() => {
         // Setup camera initial position
@@ -81,116 +58,8 @@ export default function Kamikaze() {
         );
     }, [camera, subscribeKeys]);
 
-    // Handler for activating kamikaze mode
-    const activateKamikazeMode = () => {
-        if (kamikazeMode || isDestroyed) return;
-
-        // Get current forward direction
-        const rotation = droneRef.current.rotation.y;
-        const forwardDirection = new THREE.Vector3(
-            -Math.sin(rotation),
-            0,
-            -Math.cos(rotation)
-        );
-
-        // Activate kamikaze mode
-        setKamikazeMode(true);
-        setKamikazeDirection(forwardDirection);
-        setPropellersActive(false); // Disable propellers for visual effect
-
-        // Play activation sound or effect here if desired
-        console.log("Kamikaze mode activated!");
-    };
-
-    // Handle collisions with vehicles
-    const checkVehicleCollisions = () => {
-        if (!droneRef.current || isDestroyed) return false;
-
-        // Create a dummy projectile object to use with the collision detection system
-        const dummyProjectile = {
-            position: new THREE.Vector3().copy(droneRef.current.position),
-            previousPosition: new THREE.Vector3().copy(droneRef.current.position).sub(
-                velocityRef.current.clone().multiplyScalar(1.0)
-            ),
-            type: KAMIKAZE_WEAPON_TYPE
-        };
-
-        // Check for collision with vehicles
-        const collision = checkProjectileVehicleCollision(dummyProjectile, scene);
-
-        if (collision) {
-            // Create explosion at impact point
-            triggerExplosion(
-                new THREE.Vector3().copy(droneRef.current.position),
-                KAMIKAZE_WEAPON_TYPE
-            );
-
-            // Apply damage to the hit vehicle
-            if (collision.vehicle && collision.vehicle.userData.vehicleId) {
-                // Apply damage to the vehicle
-                applyDamage(
-                    collision.vehicle.userData.vehicleId,
-                    KAMIKAZE_INNER_DAMAGE,
-                    collision.hitLocation || 'body',
-                    KAMIKAZE_WEAPON_TYPE
-                );
-
-                // Show damage indicator
-                showDamageIndicator(collision.position, KAMIKAZE_INNER_DAMAGE);
-
-                // Apply area of effect damage to nearby vehicles
-                applyAreaDamage(droneRef.current.position);
-            }
-
-            // Destroy the drone
-            setIsDestroyed(true);
-            return true;
-        }
-
-        return false;
-    };
-
-    // Apply area damage to all vehicles in range
-    const applyAreaDamage = (center) => {
-        // This would normally scan the scene for vehicles within the radius,
-        // calculate distance-based damage and apply it
-        // For simplicity, we'll assume the collision system handles this
-        console.log("Area damage applied around:", center);
-    };
-
     useFrame((state, delta) => {
-        if (!droneRef.current || isDestroyed) return;
-
-        // Handle kamikaze mode if active
-        if (kamikazeMode) {
-            // Increase speed gradually until max speed
-            setKamikazeSpeed(prev => Math.min(prev + 0.2, KAMIKAZE_MAX_SPEED));
-
-            // Apply kamikaze velocity
-            velocityRef.current.copy(kamikazeDirection.clone().multiplyScalar(kamikazeSpeed));
-
-            // Move drone forward
-            droneRef.current.position.add(velocityRef.current.clone().multiplyScalar(delta * 60));
-
-            // Check for collisions
-            const hasCollided = checkVehicleCollisions();
-            if (hasCollided) {
-                // Stop if collision occurred
-                return;
-            }
-
-            // Update position state
-            setPosition([
-                droneRef.current.position.x,
-                droneRef.current.position.y,
-                droneRef.current.position.z
-            ]);
-
-            // Update camera to follow
-            updateCamera();
-            return;
-        }
-
+        if (!droneRef.current) return;
         const { forward, backward, left, right, up, down, strafeLeft, strafeRight, shift } = getKeys();
         const rotation = droneRef.current.rotation.y;
         const forwardVector = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
@@ -275,18 +144,7 @@ export default function Kamikaze() {
         // Apply the interpolated quaternion back to the drone
         droneRef.current.setRotationFromQuaternion(slerpQuat);
 
-        updateCamera();
-        setPosition([droneRef.current.position.x, droneRef.current.position.y, droneRef.current.position.z]);
-    });
-
-    // Extract camera update logic
-    const updateCamera = () => {
-        const targetPosition = new THREE.Vector3(
-            droneRef.current.position.x,
-            droneRef.current.position.y,
-            droneRef.current.position.z
-        );
-        const rotation = droneRef.current.rotation.y;
+        const targetPosition = new THREE.Vector3(droneRef.current.position.x, droneRef.current.position.y, droneRef.current.position.z);
 
         // Fixed camera parameters
         const cameraDistance = 15;
@@ -308,32 +166,16 @@ export default function Kamikaze() {
             droneRef.current.position.y + 0.5,
             droneRef.current.position.z
         );
-    };
 
-    // Setup keyboard event listener for kamikaze activation
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            // Activate kamikaze mode with spacebar
-            if (e.code === 'Space' && !kamikazeMode && !isDestroyed) {
-                activateKamikazeMode();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [kamikazeMode, isDestroyed]);
-
-    // Don't render if destroyed
-    if (isDestroyed) return null;
+        setPosition([droneRef.current.position.x, droneRef.current.position.y, droneRef.current.position.z]);
+    });
 
     return (
         <group ref={droneRef} position={position}>
             {/* Elongated Body */}
             <mesh castShadow receiveShadow position={[0, 0, 0]}>
                 <boxGeometry args={[0.3, 0.1, 0.7]} />
-                <meshStandardMaterial color={kamikazeMode ? "#ff0000" : "#ff3300"} metalness={0.7} roughness={0.2} />
+                <meshStandardMaterial color="#ff3300" metalness={0.7} roughness={0.2} />
             </mesh>
 
             {/* Arms */}
@@ -353,47 +195,36 @@ export default function Kamikaze() {
             <LandingLeg position={[-0.1, -0.1, -0.4]} />
 
             {/* Propellers and Motors */}
-            <PropellerUnit position={[0.5, 0, 0.5]} index={0} propRef={(el) => (propellersRefs.current[0] = el)} active={propellersActive && !kamikazeMode} speed={propellersSpeed} />
-            <PropellerUnit position={[-0.5, 0, 0.5]} index={1} propRef={(el) => (propellersRefs.current[1] = el)} active={propellersActive && !kamikazeMode} speed={propellersSpeed} counterClockwise />
-            <PropellerUnit position={[0.5, 0, -0.5]} index={2} propRef={(el) => (propellersRefs.current[2] = el)} active={propellersActive && !kamikazeMode} speed={propellersSpeed} counterClockwise />
-            <PropellerUnit position={[-0.5, 0, -0.5]} index={3} propRef={(el) => (propellersRefs.current[3] = el)} active={propellersActive && !kamikazeMode} speed={propellersSpeed} />
+            <PropellerUnit position={[0.5, 0, 0.5]} index={0} propRef={(el) => (propellersRefs.current[0] = el)} active={propellersActive} speed={propellersSpeed} />
+            <PropellerUnit position={[-0.5, 0, 0.5]} index={1} propRef={(el) => (propellersRefs.current[1] = el)} active={propellersActive} speed={propellersSpeed} counterClockwise />
+            <PropellerUnit position={[0.5, 0, -0.5]} index={2} propRef={(el) => (propellersRefs.current[2] = el)} active={propellersActive} speed={propellersSpeed} counterClockwise />
+            <PropellerUnit position={[-0.5, 0, -0.5]} index={3} propRef={(el) => (propellersRefs.current[3] = el)} active={propellersActive} speed={propellersSpeed} />
 
             {/* Bigger and Brighter Battery */}
             <mesh position={[0, 0.16, 0]}>
                 <boxGeometry args={[0.25, 0.2, 0.35]} />
-                <meshStandardMaterial color={kamikazeMode ? "#ff0000" : "#0000ff"} emissive={kamikazeMode ? "#ff0000" : "#000000"} emissiveIntensity={kamikazeMode ? 0.8 : 0} />
+                <meshStandardMaterial color="#0000ff" />
             </mesh>
 
             <group>
                 {/* Main Warhead Body */}
                 <mesh position={[0, -0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
                     <cylinderGeometry args={[0.15, 0.25, 1.2, 8]} />
-                    <meshStandardMaterial color={kamikazeMode ? "#990000" : "#004d00"} metalness={0.7} roughness={0.5} />
+                    <meshStandardMaterial color="#004d00" metalness={0.7} roughness={0.5} />
                 </mesh>
 
                 {/* Pointed Nose Cone */}
                 <mesh position={[0, -0.2, -0.8]} rotation={[-Math.PI / 2, 0, 0]}>
                     <coneGeometry args={[0.25, 0.5, 8]} />
-                    <meshStandardMaterial color={kamikazeMode ? "#cc0000" : "#2e7d32"} metalness={0.7} roughness={0.5} />
+                    <meshStandardMaterial color="#2e7d32" metalness={0.7} roughness={0.5} />
                 </mesh>
 
-                {/* Add blinking lights when in kamikaze mode */}
-                {kamikazeMode && (
-                    <>
-                        <pointLight
-                            position={[0, 0.3, 0]}
-                            color="#ff0000"
-                            intensity={10}
-                            distance={3}
-                            decay={2}
-                        />
-                        <mesh position={[0, 0.3, 0]}>
-                            <sphereGeometry args={[0.1, 8, 8]} />
-                            <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
-                        </mesh>
-                    </>
-                )}
+
+
+
             </group>
+
+
         </group>
     );
 }
@@ -420,14 +251,64 @@ function PropellerUnit({ position, index, propRef, active = true, speed = 1.0, c
                 <meshStandardMaterial color="#8d99ae" metalness={0.8} roughness={0.2} />
             </mesh>
             {/* Propeller */}
-            <group ref={propellerRef} position={[0, 0.07, 0]}>
-                <mesh castShadow rotation={[0, 0, 0]}>
-                    <boxGeometry args={[0.4, 0.02, 0.05]} />
+            <group ref={propellerRef} position={[0, 0.1, 0]}>
+                <mesh castShadow>
                     <meshStandardMaterial color="#2b2d42" metalness={0.5} roughness={0.6} />
+                    <bufferGeometry>
+                        <bufferAttribute
+                            attach="attributes-position"
+                            count={12}
+                            itemSize={3}
+                            array={new Float32Array([
+                                0, 0, 0, 0.15, 0.02, -0.025, 0.15, -0.02, 0.025,
+                                0, 0, 0, 0.15, -0.02, 0.025, 0.3, 0, 0,
+                                0, 0, 0, 0.3, 0, 0, 0.15, 0.02, -0.025,
+                                0.15, 0.02, -0.025, 0.3, 0, 0, 0.15, -0.02, 0.025,
+                            ])}
+                        />
+                        <bufferAttribute
+                            attach="attributes-normal"
+                            count={12}
+                            itemSize={3}
+                            array={new Float32Array([
+                                0, 1, 0, 0, 1, 0, 0, 1, 0,
+                                0, 1, 0, 0, 1, 0, 0, 1, 0,
+                                0, 1, 0, 0, 1, 0, 0, 1, 0,
+                                0, -1, 0, 0, -1, 0, 0, -1, 0,
+                            ])}
+                        />
+                    </bufferGeometry>
                 </mesh>
-                <mesh castShadow rotation={[0, Math.PI / 2, 0]}>
-                    <boxGeometry args={[0.4, 0.02, 0.05]} />
+                <mesh castShadow rotation={[0, Math.PI, 0]}>
                     <meshStandardMaterial color="#2b2d42" metalness={0.5} roughness={0.6} />
+                    <bufferGeometry>
+                        <bufferAttribute
+                            attach="attributes-position"
+                            count={12}
+                            itemSize={3}
+                            array={new Float32Array([
+                                0, 0, 0, 0.15, 0.02, -0.025, 0.15, -0.02, 0.025,
+                                0, 0, 0, 0.15, -0.02, 0.025, 0.3, 0, 0,
+                                0, 0, 0, 0.3, 0, 0, 0.15, 0.02, -0.025,
+                                0.15, 0.02, -0.025, 0.3, 0, 0, 0.15, -0.02, 0.025,
+                            ])}
+                        />
+                        <bufferAttribute
+                            attach="attributes-normal"
+                            count={12}
+                            itemSize={3}
+                            array={new Float32Array([
+                                0, 1, 0, 0, 1, 0, 0, 1, 0,
+                                0, 1, 0, 0, 1, 0, 0, 1, 0,
+                                0, 1, 0, 0, 1, 0, 0, 1, 0,
+                                0, -1, 0, 0, -1, 0, 0, -1, 0,
+                            ])}
+                        />
+                    </bufferGeometry>
+                </mesh>
+                <mesh>
+                    <sphereGeometry args={[0.04, 8, 8]} />
+                    <meshStandardMaterial color="#2b2d42" metalness={0.7} roughness={0.2} />
                 </mesh>
             </group>
         </group>
@@ -436,17 +317,9 @@ function PropellerUnit({ position, index, propRef, active = true, speed = 1.0, c
 
 function LandingLeg({ position }) {
     return (
-        <group position={position}>
-            {/* Vertical part */}
-            <mesh castShadow>
-                <boxGeometry args={[0.04, 0.2, 0.04]} />
-                <meshStandardMaterial color="#2b2d42" metalness={0.5} roughness={0.6} />
-            </mesh>
-            {/* Horizontal part */}
-            <mesh castShadow position={[0, -0.1, 0.05]}>
-                <boxGeometry args={[0.04, 0.04, 0.14]} />
-                <meshStandardMaterial color="#2b2d42" metalness={0.5} roughness={0.6} />
-            </mesh>
-        </group>
+        <mesh castShadow position={position}>
+            <cylinderGeometry args={[0.02, 0.02, 0.3, 8]} />
+            <meshStandardMaterial color="#64748b" metalness={0.6} roughness={0.4} />
+        </mesh>
     );
 }
