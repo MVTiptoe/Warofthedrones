@@ -159,8 +159,12 @@ export default function Grenadier() {
         );
         triggerShotgunFire(muzzlePosition, forward);
 
-        // Creating buckshot - REDUCED from 5 to 3 projectiles for better performance
-        for (let i = 0; i < 3; i++) {
+        // Get current FPS to adaptively reduce shotgun pellets at lower FPS
+        const currentFps = window.currentFps || 60;
+        const pelletCount = currentFps < 40 ? 1 : (currentFps < 50 ? 2 : 3); // Adaptive pellet count based on FPS
+
+        // Creating buckshot - adaptively reduce pellet count based on FPS
+        for (let i = 0; i < pelletCount; i++) {
             // Add slight random deviation for buckshot spread
             const spread = new THREE.Vector3(
                 (Math.random() - 0.5) * 0.2,
@@ -184,8 +188,8 @@ export default function Grenadier() {
             }
             projectile.previousPosition.copy(projectile.position);
             projectile.direction.copy(direction);
-            projectile.speed = 0.8 + Math.random() * 0.4; // Varied speed
-            projectile.life = 40; // Reduced from 50 frames to 40 for shorter lifetime
+            projectile.speed = 0.9 + Math.random() * 0.3; // Slightly increase speed for faster traversal
+            projectile.life = 30; // Further reduced lifetime from 40 to 30 frames
 
             // Add to active projectiles
             setActiveProjectiles(prev => [...prev, projectile]);
@@ -877,21 +881,98 @@ function LandingLeg({ position }) {
 
 // Optimized ProjectileRenderer for better performance
 function ProjectileRenderer({ projectiles }) {
-    // Use a simple shared geometry for all projectiles of the same type
+    // Use a simple shared geometry for all projectiles of the same type with low poly designs
     const geometries = useMemo(() => ({
-        [WEAPON_TYPES.SHOTGUN]: new THREE.SphereGeometry(0.05, 3, 3),  // Further reduced segments
-        [WEAPON_TYPES.GRENADE]: new THREE.SphereGeometry(0.15, 6, 6),
-        [WEAPON_TYPES.DART]: new THREE.SphereGeometry(0.1, 6, 6)
+        // Shotgun pellets - simple low poly pellets
+        [WEAPON_TYPES.SHOTGUN]: new THREE.SphereGeometry(0.05, 3, 3),  // Keep as simple spheres
+
+        // Grenade - low poly grenade design with pull ring and lever
+        [WEAPON_TYPES.GRENADE]: new THREE.Group().add(
+            // Main grenade body
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.15, 8),
+                new THREE.MeshStandardMaterial({ color: '#4d7c0f', metalness: 0.6, roughness: 0.3 })
+            ),
+            // Grenade top
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(0.07, 0.08, 0.04, 8),
+                new THREE.MeshStandardMaterial({ color: '#3f6212', metalness: 0.7, roughness: 0.4 })
+            ).translateY(0.095),
+            // Pull pin
+            new THREE.Mesh(
+                new THREE.TorusGeometry(0.02, 0.005, 6, 6),
+                new THREE.MeshStandardMaterial({ color: '#a3a3a3', metalness: 0.8, roughness: 0.2 })
+            ).translateY(0.11).translateX(0.06).rotateX(Math.PI / 2)
+        ),
+
+        // Dart - low poly dart design with fins
+        [WEAPON_TYPES.DART]: new THREE.Group().add(
+            // Dart body
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.03, 0.15, 6),
+                new THREE.MeshStandardMaterial({ color: '#0ea5e9', metalness: 0.6, roughness: 0.3 })
+            ),
+            // Dart tip
+            new THREE.Mesh(
+                new THREE.ConeGeometry(0.03, 0.05, 6),
+                new THREE.MeshStandardMaterial({ color: '#0284c7', metalness: 0.7, roughness: 0.4 })
+            ).translateY(0.1),
+            // Dart fins (simplified as flat boxes)
+            ...[0, 1, 2, 3].map(i => new THREE.Mesh(
+                new THREE.BoxGeometry(0.01, 0.06, 0.04),
+                new THREE.MeshStandardMaterial({ color: '#38bdf8', metalness: 0.5, roughness: 0.5 })
+            ).translateY(-0.06).rotateY(i * Math.PI / 2))
+        )
     }), []);
 
-    // Create shared materials
-    const materials = useMemo(() => ({
-        [WEAPON_TYPES.SHOTGUN]: new THREE.MeshBasicMaterial({ color: 'gray' }),
-        [WEAPON_TYPES.GRENADE]: new THREE.MeshBasicMaterial({ color: 'gold' }),
-        [WEAPON_TYPES.DART]: new THREE.MeshBasicMaterial({ color: 'limegreen' })
-    }), []);
+    // Remove shared materials and use rotation for projectiles
+    const ProjectileMesh = React.memo(({ projectile }) => {
+        // Using rotation to simulate projectile movement
+        const [rotation, setRotation] = useState([0, 0, 0]);
 
-    // Group projectiles by type for batched rendering
+        useFrame(() => {
+            // Simple rotation for projectiles to make them look more dynamic
+            if (projectile.type === WEAPON_TYPES.GRENADE) {
+                // Grenade tumbles as it flies
+                setRotation([
+                    rotation[0] + 0.03,
+                    rotation[1] + 0.02,
+                    rotation[2] + 0.01
+                ]);
+            } else if (projectile.type === WEAPON_TYPES.DART) {
+                // Dart stays oriented in flight direction with slight wobble
+                const speedFactor = projectile.speed * 10;
+                setRotation([
+                    Math.sin(Date.now() * 0.005) * 0.05,
+                    rotation[1] + 0.01,
+                    Math.cos(Date.now() * 0.005) * 0.05
+                ]);
+            }
+            // Shotgun pellets don't need rotation
+        });
+
+        if (projectile.type === WEAPON_TYPES.SHOTGUN) {
+            // Shotgun pellets remain as simple meshes for performance
+            return (
+                <mesh
+                    position={[projectile.position.x, projectile.position.y, projectile.position.z]}
+                    geometry={geometries[projectile.type]}
+                    material={new THREE.MeshBasicMaterial({ color: 'gray' })}
+                />
+            );
+        }
+
+        return (
+            <group
+                position={[projectile.position.x, projectile.position.y, projectile.position.z]}
+                rotation={rotation}
+            >
+                <primitive object={geometries[projectile.type].clone()} />
+            </group>
+        );
+    });
+
+    // Group projectiles by type for batched rendering (less important now with custom meshes)
     const projectilesByType = useMemo(() => {
         const grouped = {
             [WEAPON_TYPES.SHOTGUN]: [],
@@ -912,12 +993,7 @@ function ProjectileRenderer({ projectiles }) {
         <>
             {Object.entries(projectilesByType).map(([type, typeProjectiles]) => (
                 typeProjectiles.map(projectile => (
-                    <mesh
-                        key={projectile.id}
-                        position={[projectile.position.x, projectile.position.y, projectile.position.z]}
-                        geometry={geometries[type]}
-                        material={materials[type]}
-                    />
+                    <ProjectileMesh key={projectile.id} projectile={projectile} />
                 ))
             ))}
         </>

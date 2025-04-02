@@ -17,8 +17,13 @@ export default function ShotgunMuzzleFlash({ position, direction, onComplete }) 
         // Create particles for the shotgun muzzle flash
         const particles = [];
 
-        // Create cone flash
-        for (let i = 0; i < 15; i++) {
+        // Get current FPS for adaptive particle count
+        const currentFps = window.currentFps || 60;
+        const particleCountMultiplier = currentFps < 40 ? 0.5 : (currentFps < 50 ? 0.7 : 1.0);
+
+        // Create cone flash - reduce particle count based on FPS
+        const particleCount = Math.floor(10 * particleCountMultiplier); // Reduced from 15 to 10 base particles
+        for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.random() * 0.3;
 
@@ -38,8 +43,9 @@ export default function ShotgunMuzzleFlash({ position, direction, onComplete }) 
             });
         }
 
-        // Add some small pellet particles
-        for (let i = 0; i < 8; i++) {
+        // Add some small pellet particles - reduce count based on FPS
+        const pelletCount = Math.floor(6 * particleCountMultiplier); // Reduced from 8 to 6 base particles
+        for (let i = 0; i < pelletCount; i++) {
             const spread = Math.random() * 0.2;
             const distance = 0.5 + Math.random() * 1.0;
             const angle = Math.random() * Math.PI * 2;

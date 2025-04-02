@@ -352,9 +352,14 @@ export function createExplosionEffect(weaponType, position) {
 
     // Early return with minimal data for shotgun (handled separately)
     if (weaponType === WEAPON_TYPES.SHOTGUN) {
+        // Further reduce shotgun visual effects when FPS is below threshold
+        const shotgunFpsThreshold = 45; // Higher threshold specifically for shotgun effects
+        const shotgunSpecificAdjustment = window.currentFps < shotgunFpsThreshold ?
+            Math.min(0.6, 60 / (window.currentFps || 60)) : 1.0;
+
         return {
             position: position.clone(),
-            radius: profile.outerRadius / 3,
+            radius: profile.outerRadius / 3 * shotgunSpecificAdjustment,
             duration: 1,
             type: weaponType,
             startTime: Date.now()

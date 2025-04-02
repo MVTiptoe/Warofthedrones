@@ -197,10 +197,10 @@ export default function Bomber() {
                             projectile.previousPosition = new THREE.Vector3();
                         }
                         projectile.previousPosition.copy(projectile.position);
-                        projectile.direction.set(0, -1, 0);
-                        projectile.speed = 0.3;
+                        projectile.direction.set(0, -1, 0); // Strictly vertical drop
+                        projectile.speed = 0.5; // Increased from 0.3 to 0.5 for faster falling
                         projectile.life = 80;
-                        projectile.gravity = 0.005;
+                        projectile.gravity = 0.01; // Doubled from 0.005 to 0.01 for faster acceleration
 
                         // Add to active projectiles
                         setActiveProjectiles(prev => [...prev, projectile]);
@@ -755,28 +755,73 @@ export default function Bomber() {
 
 // Optimized ProjectileRenderer for better performance
 function ProjectileRenderer({ projectiles }) {
-    // Use a simple shared geometry for all projectiles of the same type
+    // Use a simple shared geometry for all projectiles of the same type with low poly designs
     const geometries = useMemo(() => ({
-        [WEAPON_TYPES.ANTI_TANK_MINE]: new THREE.SphereGeometry(0.2, 6, 6),  // Reduced segments
-        [WEAPON_TYPES.MORTAR]: new THREE.SphereGeometry(0.15, 6, 6),         // Reduced segments
-        [WEAPON_TYPES.RPG]: new THREE.SphereGeometry(0.15, 6, 6)             // Reduced segments
+        // Tank mine - low poly cylindrical mine design with detonator
+        [WEAPON_TYPES.ANTI_TANK_MINE]: new THREE.Group().add(
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(0.2, 0.2, 0.07, 8),
+                new THREE.MeshStandardMaterial({ color: '#3a3a3a', metalness: 0.7, roughness: 0.3 })
+            ),
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.05, 0.05, 6),
+                new THREE.MeshStandardMaterial({ color: '#111111', metalness: 0.7, roughness: 0.3 })
+            ).translateY(0.06)
+        ),
+
+        // Mortar - low poly mortar shell design
+        [WEAPON_TYPES.MORTAR]: new THREE.Group().add(
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.2, 8),
+                new THREE.MeshStandardMaterial({ color: '#4a5568', metalness: 0.6, roughness: 0.3 })
+            ),
+            new THREE.Mesh(
+                new THREE.ConeGeometry(0.08, 0.12, 8),
+                new THREE.MeshStandardMaterial({ color: '#2d3748', metalness: 0.7, roughness: 0.4 })
+            ).translateY(0.16)
+        ),
+
+        // RPG - low poly rocket-propelled grenade design
+        [WEAPON_TYPES.RPG]: new THREE.Group().add(
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.06, 0.25, 8),
+                new THREE.MeshStandardMaterial({ color: '#4b5563', metalness: 0.6, roughness: 0.3 })
+            ),
+            new THREE.Mesh(
+                new THREE.ConeGeometry(0.1, 0.15, 8),
+                new THREE.MeshStandardMaterial({ color: '#374151', metalness: 0.7, roughness: 0.4 })
+            ).translateY(0.2),
+            new THREE.Mesh(
+                new THREE.BoxGeometry(0.02, 0.04, 0.1),
+                new THREE.MeshStandardMaterial({ color: '#6b7280', metalness: 0.5, roughness: 0.5 })
+            ).translateY(-0.07).translateZ(0.08)
+        )
     }), []);
 
-    // Create shared materials
-    const materials = useMemo(() => ({
-        [WEAPON_TYPES.ANTI_TANK_MINE]: new THREE.MeshBasicMaterial({ color: 'darkred' }),
-        [WEAPON_TYPES.MORTAR]: new THREE.MeshBasicMaterial({ color: 'gray' }),
-        [WEAPON_TYPES.RPG]: new THREE.MeshBasicMaterial({ color: 'darkgreen' })
-    }), []);
-
-    // Use React.memo to prevent unnecessary re-renders
+    // Remove the old shared materials since we're using custom meshes with their own materials
     const ProjectileMesh = React.memo(({ projectile }) => {
+        // Using rotation to simulate the projectile spinning as it falls
+        const [rotation, setRotation] = useState([0, 0, 0]);
+
+        useFrame(() => {
+            // Simple rotation for projectiles to make them look more dynamic
+            if (projectile.type === WEAPON_TYPES.ANTI_TANK_MINE) {
+                setRotation([0, rotation[1] + 0.02, 0]); // Mine rotates on Y axis
+            } else if (projectile.type === WEAPON_TYPES.MORTAR) {
+                setRotation([rotation[0] + 0.03, 0, 0]); // Mortar rotates on X axis (tumbling)
+            } else if (projectile.type === WEAPON_TYPES.RPG) {
+                // RPG doesn't rotate much - just a slight wobble
+                setRotation([Math.sin(Date.now() * 0.01) * 0.05, 0, 0]);
+            }
+        });
+
         return (
-            <mesh
+            <group
                 position={[projectile.position.x, projectile.position.y, projectile.position.z]}
-                geometry={geometries[projectile.type]}
-                material={materials[projectile.type]}
-            />
+                rotation={rotation}
+            >
+                <primitive object={geometries[projectile.type].clone()} />
+            </group>
         );
     });
 
