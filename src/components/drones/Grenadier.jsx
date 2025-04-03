@@ -8,6 +8,7 @@ import { triggerExplosion } from '../effects/ExplosionsManager';
 import { showDamageIndicator } from '../effects/DamageIndicator';
 import { getKeys } from '../../utils/KeyboardControls';
 import { triggerShotgunFire } from '../effects/ShotgunEffectsManager';
+import { DRONE_TYPES } from '../../utils/DronesContext';
 
 // Constants for object pooling
 const POOL_SIZE = {
@@ -59,6 +60,9 @@ export default function Grenadier() {
 
     // Add downward view state
     const [downwardViewActive, setDownwardViewActive] = useState(false);
+
+    // Add HUD state
+    const [showHUD, setShowHUD] = useState(true);
 
     // Initialize object pools
     useEffect(() => {
@@ -142,8 +146,18 @@ export default function Grenadier() {
         if (shotgunAmmo <= 0 || shotgunCooldown) return;
 
         console.log("Firing shotgun!");
-        setShotgunAmmo(prev => prev - 1);
+        const newAmmo = shotgunAmmo - 1;
+        setShotgunAmmo(newAmmo);
         setShotgunCooldown(true);
+
+        // Dispatch ammo update event
+        window.dispatchEvent(new CustomEvent('ammoUpdate', {
+            detail: {
+                droneType: DRONE_TYPES.GRENADIER,
+                weaponType: 'shotgunAmmo',
+                ammoCount: newAmmo
+            }
+        }));
 
         // Add shotgun projectile logic here
         const rotation = droneRef.current.rotation.y;
@@ -205,8 +219,18 @@ export default function Grenadier() {
         if (grenadeAmmo <= 0 || grenadeCooldown) return;
 
         console.log("Dropping grenade!");
-        setGrenadeAmmo(grenadeAmmo - 1);
+        const newAmmo = grenadeAmmo - 1;
+        setGrenadeAmmo(newAmmo);
         setGrenadeCooldown(true);
+
+        // Dispatch ammo update event
+        window.dispatchEvent(new CustomEvent('ammoUpdate', {
+            detail: {
+                droneType: DRONE_TYPES.GRENADIER,
+                weaponType: 'grenadeAmmo',
+                ammoCount: newAmmo
+            }
+        }));
 
         // Get current position from the drone ref
         const currentPosition = droneRef.current.position;
@@ -244,8 +268,18 @@ export default function Grenadier() {
         if (dartAmmo <= 0 || dartCooldown) return;
 
         console.log("Dropping dart!");
-        setDartAmmo(dartAmmo - 1);
+        const newAmmo = dartAmmo - 1;
+        setDartAmmo(newAmmo);
         setDartCooldown(true);
+
+        // Dispatch ammo update event
+        window.dispatchEvent(new CustomEvent('ammoUpdate', {
+            detail: {
+                droneType: DRONE_TYPES.GRENADIER,
+                weaponType: 'dartAmmo',
+                ammoCount: newAmmo
+            }
+        }));
 
         // Get current position from the drone ref
         const currentPosition = droneRef.current.position;
@@ -752,9 +786,6 @@ export default function Grenadier() {
 
             {/* Render only active projectiles */}
             <ProjectileRenderer projectiles={activeProjectiles} />
-
-            {/* Debug visualization of projectile paths - disabled for performance */}
-            {/* <ProjectileDebugLines projectiles={activeProjectiles} /> */}
         </>
     );
 }
@@ -890,39 +921,39 @@ function ProjectileRenderer({ projectiles }) {
         [WEAPON_TYPES.GRENADE]: new THREE.Group().add(
             // Main grenade body
             new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.08, 0.15, 8),
+                new THREE.CylinderGeometry(0.15, 0.15, 0.23, 8),
                 new THREE.MeshStandardMaterial({ color: '#4d7c0f', metalness: 0.6, roughness: 0.3 })
             ),
             // Grenade top
             new THREE.Mesh(
-                new THREE.CylinderGeometry(0.07, 0.08, 0.04, 8),
+                new THREE.CylinderGeometry(0.14, 0.15, 0.06, 8),
                 new THREE.MeshStandardMaterial({ color: '#3f6212', metalness: 0.7, roughness: 0.4 })
-            ).translateY(0.095),
+            ).translateY(0.145),
             // Pull pin
             new THREE.Mesh(
-                new THREE.TorusGeometry(0.02, 0.005, 6, 6),
+                new THREE.TorusGeometry(0.03, 0.007, 6, 6),
                 new THREE.MeshStandardMaterial({ color: '#a3a3a3', metalness: 0.8, roughness: 0.2 })
-            ).translateY(0.11).translateX(0.06).rotateX(Math.PI / 2)
+            ).translateY(0.17).translateX(0.09).rotateX(Math.PI / 2)
         ),
 
         // Dart - low poly dart design with fins
         [WEAPON_TYPES.DART]: new THREE.Group().add(
             // Dart body
             new THREE.Mesh(
-                new THREE.CylinderGeometry(0.03, 0.03, 0.15, 6),
-                new THREE.MeshStandardMaterial({ color: '#0ea5e9', metalness: 0.6, roughness: 0.3 })
+                new THREE.CylinderGeometry(0.08, 0.08, 0.35, 6),
+                new THREE.MeshStandardMaterial({ color: '#8b5cf6', metalness: 0.6, roughness: 0.3 })
             ),
             // Dart tip
             new THREE.Mesh(
-                new THREE.ConeGeometry(0.03, 0.05, 6),
-                new THREE.MeshStandardMaterial({ color: '#0284c7', metalness: 0.7, roughness: 0.4 })
-            ).translateY(0.1),
+                new THREE.ConeGeometry(0.08, 0.12, 6),
+                new THREE.MeshStandardMaterial({ color: '#7c3aed', metalness: 0.7, roughness: 0.4 })
+            ).translateY(-0.23),
             // Dart fins (simplified as flat boxes)
             ...[0, 1, 2, 3].map(i => new THREE.Mesh(
-                new THREE.BoxGeometry(0.01, 0.06, 0.04),
-                new THREE.MeshStandardMaterial({ color: '#38bdf8', metalness: 0.5, roughness: 0.5 })
-            ).translateY(-0.06).rotateY(i * Math.PI / 2))
-        )
+                new THREE.BoxGeometry(0.025, 0.13, 0.09),
+                new THREE.MeshStandardMaterial({ color: '#a78bfa', metalness: 0.5, roughness: 0.5 })
+            ).translateY(0.14).rotateY(i * Math.PI / 2))
+        ).rotateX(Math.PI)
     }), []);
 
     // Remove shared materials and use rotation for projectiles
@@ -997,5 +1028,33 @@ function ProjectileRenderer({ projectiles }) {
                 ))
             ))}
         </>
+    );
+}
+
+// HUD component that will be used outside the Canvas
+export function GrenadierHUD({ shotgunAmmo, grenadeAmmo, dartAmmo, showHUD }) {
+    if (!showHUD) return null;
+
+    return (
+        <div className="weapon-hud grenadier-hud">
+            <h2>GRENADIER DRONE</h2>
+            <div className="weapon-list">
+                <div className="weapon-item">
+                    <span className="weapon-name">SHOTGUN [{shotgunAmmo}]</span>
+                    <span className="weapon-key">LMB</span>
+                </div>
+                <div className="weapon-item">
+                    <span className="weapon-name">GRENADE [{grenadeAmmo}]</span>
+                    <span className="weapon-key">RMB</span>
+                </div>
+                <div className="weapon-item">
+                    <span className="weapon-name">DART [{dartAmmo}]</span>
+                    <span className="weapon-key">C</span>
+                </div>
+            </div>
+            <div className="view-toggle">
+                <span>CAMERA VIEW TOGGLE: V</span>
+            </div>
+        </div>
     );
 } 

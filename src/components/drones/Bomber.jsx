@@ -8,6 +8,7 @@ import { triggerExplosion } from '../effects/ExplosionsManager';
 import { showDamageIndicator } from '../effects/DamageIndicator';
 import { getKeys } from '../../utils/KeyboardControls';
 import { useProjectilePool } from '../../utils/ProjectilePool';
+import { DRONE_TYPES } from '../../utils/DronesContext';
 
 // Constants for object pooling - reduced pool size for better performance
 const POOL_SIZE = {
@@ -180,8 +181,18 @@ export default function Bomber() {
                 case 0: // Left mouse button
                     if (mineAmmo > 0 && !mineCooldown) {
                         console.log("Dropping mine");
-                        setMineAmmo(prev => prev - 1);
+                        const newAmmo = mineAmmo - 1;
+                        setMineAmmo(newAmmo);
                         setMineCooldown(true);
+
+                        // Dispatch ammo update event
+                        window.dispatchEvent(new CustomEvent('ammoUpdate', {
+                            detail: {
+                                droneType: DRONE_TYPES.BOMBER,
+                                weaponType: 'mineAmmo',
+                                ammoCount: newAmmo
+                            }
+                        }));
 
                         // Get projectile from pool
                         const projectile = getProjectileFromPool(WEAPON_TYPES.ANTI_TANK_MINE);
@@ -211,8 +222,18 @@ export default function Bomber() {
                 case 2: // Right mouse button
                     if (mortarAmmo > 0 && !mortarCooldown) {
                         console.log("Dropping mortar");
-                        setMortarAmmo(prev => prev - 1);
+                        const newAmmo = mortarAmmo - 1;
+                        setMortarAmmo(newAmmo);
                         setMortarCooldown(true);
+
+                        // Dispatch ammo update event
+                        window.dispatchEvent(new CustomEvent('ammoUpdate', {
+                            detail: {
+                                droneType: DRONE_TYPES.BOMBER,
+                                weaponType: 'mortarAmmo',
+                                ammoCount: newAmmo
+                            }
+                        }));
 
                         // Get projectile from pool
                         const projectile = getProjectileFromPool(WEAPON_TYPES.MORTAR);
@@ -249,8 +270,18 @@ export default function Bomber() {
             if (e.key === 'c' || e.key === 'C') {
                 if (rpgAmmo > 0 && !rpgCooldown) {
                     console.log("Dropping RPG");
-                    setRpgAmmo(prev => prev - 1);
+                    const newAmmo = rpgAmmo - 1;
+                    setRpgAmmo(newAmmo);
                     setRpgCooldown(true);
+
+                    // Dispatch ammo update event
+                    window.dispatchEvent(new CustomEvent('ammoUpdate', {
+                        detail: {
+                            droneType: DRONE_TYPES.BOMBER,
+                            weaponType: 'rpgAmmo',
+                            ammoCount: newAmmo
+                        }
+                    }));
 
                     // Get projectile from pool
                     const projectile = getProjectileFromPool(WEAPON_TYPES.RPG);
@@ -746,9 +777,6 @@ export default function Bomber() {
 
             {/* Render only active projectiles using the optimized renderer */}
             <ProjectileRenderer projectiles={activeProjectiles} />
-
-            {/* Debug visualization of projectile paths - disabled for performance */}
-            {/* <ProjectileDebugLines projectiles={activeProjectiles} /> */}
         </>
     );
 }
@@ -760,42 +788,42 @@ function ProjectileRenderer({ projectiles }) {
         // Tank mine - low poly cylindrical mine design with detonator
         [WEAPON_TYPES.ANTI_TANK_MINE]: new THREE.Group().add(
             new THREE.Mesh(
-                new THREE.CylinderGeometry(0.2, 0.2, 0.07, 8),
+                new THREE.CylinderGeometry(0.3, 0.3, 0.11, 8),
                 new THREE.MeshStandardMaterial({ color: '#3a3a3a', metalness: 0.7, roughness: 0.3 })
             ),
             new THREE.Mesh(
-                new THREE.CylinderGeometry(0.05, 0.05, 0.05, 6),
+                new THREE.CylinderGeometry(0.075, 0.075, 0.08, 6),
                 new THREE.MeshStandardMaterial({ color: '#111111', metalness: 0.7, roughness: 0.3 })
-            ).translateY(0.06)
+            ).translateY(0.09)
         ),
 
         // Mortar - low poly mortar shell design
         [WEAPON_TYPES.MORTAR]: new THREE.Group().add(
             new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.08, 0.2, 8),
+                new THREE.CylinderGeometry(0.12, 0.12, 0.3, 8),
                 new THREE.MeshStandardMaterial({ color: '#4a5568', metalness: 0.6, roughness: 0.3 })
             ),
             new THREE.Mesh(
-                new THREE.ConeGeometry(0.08, 0.12, 8),
+                new THREE.ConeGeometry(0.12, 0.18, 8),
                 new THREE.MeshStandardMaterial({ color: '#2d3748', metalness: 0.7, roughness: 0.4 })
-            ).translateY(0.16)
-        ),
+            ).translateY(-0.24)
+        ).rotateX(Math.PI),
 
         // RPG - low poly rocket-propelled grenade design
         [WEAPON_TYPES.RPG]: new THREE.Group().add(
             new THREE.Mesh(
-                new THREE.CylinderGeometry(0.06, 0.06, 0.25, 8),
-                new THREE.MeshStandardMaterial({ color: '#4b5563', metalness: 0.6, roughness: 0.3 })
+                new THREE.CylinderGeometry(0.09, 0.09, 0.38, 8),
+                new THREE.MeshStandardMaterial({ color: '#2c5e1a', metalness: 0.6, roughness: 0.3 })
             ),
             new THREE.Mesh(
-                new THREE.ConeGeometry(0.1, 0.15, 8),
-                new THREE.MeshStandardMaterial({ color: '#374151', metalness: 0.7, roughness: 0.4 })
-            ).translateY(0.2),
+                new THREE.ConeGeometry(0.15, 0.23, 8),
+                new THREE.MeshStandardMaterial({ color: '#1e4212', metalness: 0.7, roughness: 0.4 })
+            ).translateY(-0.3),
             new THREE.Mesh(
-                new THREE.BoxGeometry(0.02, 0.04, 0.1),
-                new THREE.MeshStandardMaterial({ color: '#6b7280', metalness: 0.5, roughness: 0.5 })
-            ).translateY(-0.07).translateZ(0.08)
-        )
+                new THREE.BoxGeometry(0.03, 0.06, 0.15),
+                new THREE.MeshStandardMaterial({ color: '#3a6e27', metalness: 0.5, roughness: 0.5 })
+            ).translateY(0.11).translateZ(0.12)
+        ).rotateX(Math.PI)
     }), []);
 
     // Remove the old shared materials since we're using custom meshes with their own materials
@@ -951,5 +979,33 @@ function LandingLeg({ position }) {
                 <meshStandardMaterial color="#475569" metalness={0.4} roughness={0.6} />
             </mesh>
         </group>
+    );
+}
+
+// HUD component that will be used outside the Canvas
+export function BomberHUD({ mineAmmo, mortarAmmo, rpgAmmo, showHUD }) {
+    if (!showHUD) return null;
+
+    return (
+        <div className="weapon-hud bomber-hud">
+            <h2>BOMBER DRONE</h2>
+            <div className="weapon-list">
+                <div className="weapon-item">
+                    <span className="weapon-name">MINE [{mineAmmo}]</span>
+                    <span className="weapon-key">LMB</span>
+                </div>
+                <div className="weapon-item">
+                    <span className="weapon-name">MORTAR [{mortarAmmo}]</span>
+                    <span className="weapon-key">RMB</span>
+                </div>
+                <div className="weapon-item">
+                    <span className="weapon-name">RPG [{rpgAmmo}]</span>
+                    <span className="weapon-key">C</span>
+                </div>
+            </div>
+            <div className="view-toggle">
+                <span>CAMERA VIEW TOGGLE: V</span>
+            </div>
+        </div>
     );
 }

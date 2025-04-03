@@ -7,6 +7,7 @@ import { DronesProvider } from './utils/DronesContext';
 import DroneSelector from './components/DroneSelector';
 import VehicleHealthHUD from './components/ui/VehicleHealthHUD';
 import ControlsList from './components/ui/ControlsList';
+import DroneHUDs from './components/DroneHUDs';
 
 export default function App() {
     // State for the selected vehicle
@@ -40,6 +41,7 @@ export default function App() {
                         <ControlsList />
                         <DroneSelector />
                         <VehicleHealthHUD selectedVehicleId={selectedVehicleId} />
+                        <DroneHUDs />
                     </div>
                 </KeyboardControls>
             </DronesProvider>
