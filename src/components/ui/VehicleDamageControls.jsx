@@ -197,11 +197,11 @@ export const VehicleDamageControls = () => {
                         hasStatusChanges = true;
 
                         if (vehicle.isDead && !vehicle.isDestroyed) {
-                            // Vehicle just died, will disappear in 5 seconds
+                            // Vehicle just died, will disappear in 1.5 seconds
                             newRespawnStatus[vehicle.id] = {
-                                disappearAt: now + 5000,
-                                respawnAt: now + 35000, // 5s + 30s
-                                timeLeft: 5000
+                                disappearAt: now + 1500,
+                                respawnAt: now + 31500, // 1.5s + 30s
+                                timeLeft: 1500
                             };
                         } else if (vehicle.isDestroyed) {
                             // Vehicle is already destroyed

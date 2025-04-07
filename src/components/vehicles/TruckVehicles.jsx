@@ -30,15 +30,15 @@ export const CivilianTruck1 = (props) => (
         <boxGeometry args={[2.2, 1.2, 1.8]} />
         <meshStandardMaterial color="#778899" />
       </mesh>
-      {/* Simple windshield */}
+      {/* Simple windshield - fixed material reference */}
       <mesh position={[0, 0.2, -0.9]}>
         <boxGeometry args={[1.8, 0.5, 0.1]} />
-        <meshStandardMaterial material={SHARED_MATERIALS.windshield} />
+        <meshStandardMaterial {...SHARED_MATERIALS.windshield} />
       </mesh>
       {/* Basic front lights */}
       <mesh position={[0, -0.2, -0.95]}>
         <boxGeometry args={[1.4, 0.2, 0.05]} />
-        <meshStandardMaterial material={SHARED_MATERIALS.headlight} />
+        <meshStandardMaterial {...SHARED_MATERIALS.headlight} />
       </mesh>
     </group>
     {/* Basic trailer */}
@@ -48,20 +48,26 @@ export const CivilianTruck1 = (props) => (
         <meshStandardMaterial color="#A9A9A9" />
       </mesh>
     </group>
-    {/* Simple wheels */}
+    {/* Simple wheels - properly aligned with vehicle dimensions */}
     {[
-      { pos: [-0.8, 0.3, -2.5] },
-      { pos: [0.8, 0.3, -2.5] },
-      { pos: [-0.8, 0.3, 1] },
-      { pos: [0.8, 0.3, 1] },
-      { pos: [-0.8, 0.3, 2.2] },
-      { pos: [0.8, 0.3, 2.2] }
+      { pos: [-0.9, 0.3, -2.5] },
+      { pos: [0.9, 0.3, -2.5] },
+      { pos: [-0.9, 0.3, 0.3] },
+      { pos: [0.9, 0.3, 0.3] },
+      { pos: [-0.9, 0.3, 2.2] },
+      { pos: [0.9, 0.3, 2.2] }
     ].map((wheel, i) => (
-      <mesh key={i} position={wheel.pos}>
+      <mesh key={i} position={wheel.pos} name="wheels">
         <cylinderGeometry args={[0.45, 0.45, 0.3, 8]} />
         <meshStandardMaterial color="#222" />
       </mesh>
     ))}
+
+    {/* Named mesh for hit detection - helps with proper hitbox calculation */}
+    <mesh position={[0, 0, 0]} visible={false} name="body">
+      <boxGeometry args={[2.3, 1.4, 6.2]} />
+      <meshStandardMaterial color="red" wireframe opacity={0.1} transparent />
+    </mesh>
   </group>
 );
 

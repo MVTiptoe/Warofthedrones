@@ -11,8 +11,9 @@ import ExplosionsManager from './effects/ExplosionsManager';
 import ShotgunEffectsManager from './effects/ShotgunEffectsManager';
 import { DamageIndicatorsManager } from './effects/DamageIndicator';
 import VehicleHealthSystem from './VehicleHealthSystem';
+import VehicleDesignTest from './VehicleDesignTest';
 
-export default function Scene({ onSelectVehicle }) {
+export default function Scene({ onSelectVehicle, showTestVehicles = false }) {
     const { scene } = useThree();
 
     useEffect(() => {
@@ -64,6 +65,9 @@ export default function Scene({ onSelectVehicle }) {
 
             {/* Vehicles driving on roads */}
             <VehiclesOnRoad />
+
+            {/* Vehicle test designs for editing - only shown when showTestVehicles is true */}
+            {showTestVehicles && <VehicleDesignTest />}
 
             {/* Player Drone */}
             <DroneSwitcher />

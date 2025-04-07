@@ -221,7 +221,7 @@ export const useVehicleHealthStore = create((set, get) => ({
                 // Vehicle stays visible and greyed out for 5 seconds after death, then gets destroyed
                 setTimeout(() => {
                     get().destroyVehicle(vehicleId);
-                }, 5000);
+                }, 1500);
             }
 
             return {
@@ -239,16 +239,20 @@ export const useVehicleHealthStore = create((set, get) => ({
             const vehicle = state.vehicleHealth[vehicleId];
             if (!vehicle || vehicle.isDestroyed) return state;
 
-            // Set respawn timer - vehicle will respawn after 30 seconds
-            const respawnTimer = setTimeout(() => {
-                get().respawnVehicle(vehicleId);
-            }, 30000);
+            // Only set respawn timer for military vehicles
+            let updatedTimers = state.respawnTimers;
+            if (vehicle.category !== 'CAR' && vehicle.category !== 'CIVILIAN_TRUCK') {
+                // Set respawn timer - vehicle will respawn after 30 seconds
+                const respawnTimer = setTimeout(() => {
+                    get().respawnVehicle(vehicleId);
+                }, 30000);
 
-            // Store the timer so we can cancel if needed
-            const updatedTimers = {
-                ...state.respawnTimers,
-                [vehicleId]: respawnTimer
-            };
+                // Store the timer so we can cancel if needed
+                updatedTimers = {
+                    ...state.respawnTimers,
+                    [vehicleId]: respawnTimer
+                };
+            }
 
             return {
                 vehicleHealth: {

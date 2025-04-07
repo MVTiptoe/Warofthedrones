@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDrones, DRONE_TYPES } from '../utils/DronesContext';
 import { BomberHUD } from './drones/Bomber';
 import { GrenadierHUD } from './drones/Grenadier';
+import { KamikazeHUD } from './drones/Kamikaze';
 
 export default function DroneHUDs() {
     const { currentDrone } = useDrones();
@@ -63,6 +64,12 @@ export default function DroneHUDs() {
                     shotgunAmmo={grenadierAmmo.shotgunAmmo}
                     grenadeAmmo={grenadierAmmo.grenadeAmmo}
                     dartAmmo={grenadierAmmo.dartAmmo}
+                    showHUD={showHUD}
+                />
+            );
+        case DRONE_TYPES.KAMIKAZE:
+            return (
+                <KamikazeHUD
                     showHUD={showHUD}
                 />
             );

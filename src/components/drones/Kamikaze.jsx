@@ -6,6 +6,9 @@ import '../../styles/drone.css';
 import { checkProjectileVehicleCollision, WEAPON_TYPES } from '../../utils/WeaponPhysics';
 import { triggerExplosion } from '../effects/ExplosionsManager';
 import { showDamageIndicator } from '../effects/DamageIndicator';
+import { DRONE_TYPES } from '../../utils/DronesContext';
+import { Controls } from '../KeyboardControls';
+import { useKamikaze } from '../../utils/KamikazeContext';
 
 export default function Kamikaze() {
     const droneRef = useRef();
@@ -14,6 +17,10 @@ export default function Kamikaze() {
     const propellersRefs = useRef([]);
     const previousPositionRef = useRef(new THREE.Vector3(0, 10, 0)); // Store previous position for collision detection
     const collisionOccurred = useRef(false); // Track if a collision has occurred
+    const mousePos = useRef({ x: 0, y: 0 });
+
+    // First person view state from context
+    const { isFirstPerson, toggleFirstPerson } = useKamikaze();
 
     // Initial rotation reference - with explicit YXZ rotation order
     const initialRotationRef = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
@@ -21,7 +28,7 @@ export default function Kamikaze() {
     const [position, setPosition] = useState([0, 10, 0]);
     const [propellersActive, setPropellersActive] = useState(false);
     const [propellersSpeed, setPropellersSpeed] = useState(0);
-    const { camera, scene } = useThree();
+    const { camera, scene, gl } = useThree();
     const [subscribeKeys, getKeys] = useKeyboardControls();
 
     const THRUST = 0.05;
@@ -64,6 +71,36 @@ export default function Kamikaze() {
         }, 3000); // Respawn after 3 seconds
     };
 
+    // Mouse move handler
+    const handleMouseMove = (event) => {
+        if (isFirstPerson) {
+            // Get normalized device coordinates (NDC) between -1 and 1
+            // Higher sensitivity for rocket-like steering
+            mousePos.current.x = (event.clientX / window.innerWidth) * 3 - 1.5;
+            mousePos.current.y = -(event.clientY / window.innerHeight) * 3 + 1.5;
+
+            // Prevent default browser behavior to ensure continuous tracking
+            event.preventDefault();
+        }
+    };
+
+    useEffect(() => {
+        // Handle first person view toggle with keypress
+        const handleKeyDown = (e) => {
+            if (e.code === 'KeyV') {
+                toggleFirstPerson();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('mousemove', handleMouseMove);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('mousemove', handleMouseMove);
+        };
+    }, [toggleFirstPerson]);
+
     useEffect(() => {
         // Setup camera initial position
         camera.position.set(0, 15, 20);
@@ -94,6 +131,34 @@ export default function Kamikaze() {
         );
     }, [camera, subscribeKeys]);
 
+    useEffect(() => {
+        // Watch for first-person mode changes
+        console.log(`Kamikaze drone first-person mode: ${isFirstPerson ? 'ACTIVE' : 'INACTIVE'}`);
+
+        if (isFirstPerson) {
+            // When entering first-person mode, show visual feedback
+            const flash = document.createElement('div');
+            flash.style.position = 'fixed';
+            flash.style.top = '0';
+            flash.style.left = '0';
+            flash.style.width = '100%';
+            flash.style.height = '100%';
+            flash.style.backgroundColor = 'rgba(255, 85, 0, 0.3)';
+            flash.style.zIndex = '9999';
+            flash.style.transition = 'opacity 0.5s';
+            flash.style.pointerEvents = 'none';
+            document.body.appendChild(flash);
+
+            // Fade out and remove
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(flash);
+                }, 500);
+            }, 100);
+        }
+    }, [isFirstPerson]);
+
     useFrame((state, delta) => {
         if (!droneRef.current || collisionOccurred.current) return;
 
@@ -105,29 +170,52 @@ export default function Kamikaze() {
         const forwardVector = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
         const rightVector = new THREE.Vector3(Math.cos(rotation), 0, -Math.sin(rotation));
 
-        // Apply forward movement and slight downward movement when pressing W
-        if (forward) {
-            velocityRef.current.add(forwardVector.clone().multiplyScalar(THRUST * 2)); // 2x speed for forward
-            velocityRef.current.y -= DIVE_POWER; // Slight downward movement
-        }
-        if (backward) {
-            velocityRef.current.add(forwardVector.clone().multiplyScalar(-THRUST));
-            velocityRef.current.y += DIVE_POWER * 0.8; // Slight upward movement when pressing S
-        }
+        // If in first person mode, use rocket-like steering
+        if (isFirstPerson) {
+            // In first-person view, always move forward automatically (rocket-like behavior)
+            velocityRef.current.add(forwardVector.clone().multiplyScalar(THRUST * 2.5));
 
-        if (left) {
+            // Mouse position directly controls rotation with increased sensitivity
+            const targetRotationY = rotation - mousePos.current.x * 0.4;
             droneRef.current.rotation.y = THREE.MathUtils.lerp(
                 droneRef.current.rotation.y,
-                droneRef.current.rotation.y + ROTATION_SPEED * 3,
-                0.2
+                targetRotationY,
+                0.25
             );
-        }
-        if (right) {
-            droneRef.current.rotation.y = THREE.MathUtils.lerp(
-                droneRef.current.rotation.y,
-                droneRef.current.rotation.y - ROTATION_SPEED * 3,
-                0.2
+
+            // Pitch control with mouse Y
+            const pitchAmount = Math.max(-0.6, Math.min(0.6, mousePos.current.y * 0.6));
+            droneRef.current.rotation.x = THREE.MathUtils.lerp(
+                droneRef.current.rotation.x,
+                pitchAmount,
+                0.25
             );
+        } else {
+            // Standard controls for third-person view
+            if (forward) {
+                velocityRef.current.add(forwardVector.clone().multiplyScalar(THRUST * 2));
+                velocityRef.current.y -= DIVE_POWER;
+            }
+            if (backward) {
+                velocityRef.current.add(forwardVector.clone().multiplyScalar(-THRUST));
+                velocityRef.current.y += DIVE_POWER * 0.8;
+            }
+
+            // Standard keyboard rotation for third person
+            if (left) {
+                droneRef.current.rotation.y = THREE.MathUtils.lerp(
+                    droneRef.current.rotation.y,
+                    droneRef.current.rotation.y + ROTATION_SPEED * 3,
+                    0.2
+                );
+            }
+            if (right) {
+                droneRef.current.rotation.y = THREE.MathUtils.lerp(
+                    droneRef.current.rotation.y,
+                    droneRef.current.rotation.y - ROTATION_SPEED * 3,
+                    0.2
+                );
+            }
         }
 
         if (strafeLeft) velocityRef.current.add(rightVector.clone().multiplyScalar(-STRAFE_POWER));
@@ -201,28 +289,53 @@ export default function Kamikaze() {
         // Apply the interpolated quaternion back to the drone
         droneRef.current.setRotationFromQuaternion(slerpQuat);
 
-        const targetPosition = new THREE.Vector3(droneRef.current.position.x, droneRef.current.position.y, droneRef.current.position.z);
-
-        // Fixed camera parameters
-        const cameraDistance = 15;
-        const cameraHeight = 6;
-
-        // Calculate camera position behind the drone
-        const cameraOffset = new THREE.Vector3(
-            Math.sin(rotation) * cameraDistance,
-            cameraHeight,
-            Math.cos(rotation) * cameraDistance
-        );
-
-        // Set camera position
-        camera.position.copy(targetPosition).add(cameraOffset);
-
-        // Make camera look at the drone
-        camera.lookAt(
+        const targetPosition = new THREE.Vector3(
             droneRef.current.position.x,
-            droneRef.current.position.y + 0.5,
+            droneRef.current.position.y,
             droneRef.current.position.z
         );
+
+        // Camera positioning based on view mode
+        if (isFirstPerson) {
+            // First person - position camera at drone's location with slight offset
+            const fpOffset = new THREE.Vector3(0, 0.2, 0);
+            const fpDirection = new THREE.Vector3(
+                -Math.sin(rotation),
+                droneRef.current.rotation.x * 0.5, // Look slightly up/down based on pitch
+                -Math.cos(rotation)
+            ).normalize();
+
+            // Position the camera at the drone's position with a slight vertical offset
+            camera.position.copy(targetPosition).add(fpOffset);
+
+            // Look in the direction the drone is pointing
+            camera.lookAt(
+                camera.position.x + fpDirection.x,
+                camera.position.y + fpDirection.y,
+                camera.position.z + fpDirection.z
+            );
+        } else {
+            // Third person - regular follow camera
+            const cameraDistance = 15;
+            const cameraHeight = 6;
+
+            // Calculate camera position behind the drone
+            const cameraOffset = new THREE.Vector3(
+                Math.sin(rotation) * cameraDistance,
+                cameraHeight,
+                Math.cos(rotation) * cameraDistance
+            );
+
+            // Set camera position
+            camera.position.copy(targetPosition).add(cameraOffset);
+
+            // Make camera look at the drone
+            camera.lookAt(
+                droneRef.current.position.x,
+                droneRef.current.position.y + 0.5,
+                droneRef.current.position.z
+            );
+        }
 
         setPosition([droneRef.current.position.x, droneRef.current.position.y, droneRef.current.position.z]);
     });
@@ -252,10 +365,10 @@ export default function Kamikaze() {
             <LandingLeg position={[-0.1, -0.1, -0.4]} />
 
             {/* Propellers and Motors */}
-            <PropellerUnit position={[0.5, 0, 0.5]} index={0} propRef={(el) => (propellersRefs.current[0] = el)} active={propellersActive} speed={propellersSpeed} />
-            <PropellerUnit position={[-0.5, 0, 0.5]} index={1} propRef={(el) => (propellersRefs.current[1] = el)} active={propellersActive} speed={propellersSpeed} counterClockwise />
-            <PropellerUnit position={[0.5, 0, -0.5]} index={2} propRef={(el) => (propellersRefs.current[2] = el)} active={propellersActive} speed={propellersSpeed} counterClockwise />
-            <PropellerUnit position={[-0.5, 0, -0.5]} index={3} propRef={(el) => (propellersRefs.current[3] = el)} active={propellersActive} speed={propellersSpeed} />
+            <PropellerUnit position={[0.5, 0, 0.5]} index={0} propRef={(el) => propellersRefs.current[0] = el} active={propellersActive} speed={propellersSpeed} />
+            <PropellerUnit position={[-0.5, 0, 0.5]} index={1} propRef={(el) => propellersRefs.current[1] = el} active={propellersActive} speed={propellersSpeed} counterClockwise={true} />
+            <PropellerUnit position={[0.5, 0, -0.5]} index={2} propRef={(el) => propellersRefs.current[2] = el} active={propellersActive} speed={propellersSpeed} counterClockwise={true} />
+            <PropellerUnit position={[-0.5, 0, -0.5]} index={3} propRef={(el) => propellersRefs.current[3] = el} active={propellersActive} speed={propellersSpeed} />
 
             {/* Bigger and Brighter Battery */}
             <mesh position={[0, 0.16, 0]}>
@@ -275,13 +388,7 @@ export default function Kamikaze() {
                     <coneGeometry args={[0.25, 0.5, 8]} />
                     <meshStandardMaterial color="#2e7d32" metalness={0.7} roughness={0.5} />
                 </mesh>
-
-
-
-
             </group>
-
-
         </group>
     );
 }
@@ -378,5 +485,31 @@ function LandingLeg({ position }) {
             <cylinderGeometry args={[0.02, 0.02, 0.3, 8]} />
             <meshStandardMaterial color="#64748b" metalness={0.6} roughness={0.4} />
         </mesh>
+    );
+}
+
+// KamikazeHUD component for first-person view
+export function KamikazeHUD({ showHUD }) {
+    const { isFirstPerson, toggleFirstPerson } = useKamikaze();
+
+    if (!showHUD) return null;
+
+    return (
+        <div className="drone-hud kamikaze-hud">
+            {/* Toggle button */}
+            <button
+                className={`first-person-toggle ${isFirstPerson ? 'active' : ''}`}
+                onClick={toggleFirstPerson}
+            >
+                {isFirstPerson ? 'Exit First Person' : 'First Person View'}
+            </button>
+
+            {/* First person mode indicator */}
+            {isFirstPerson && (
+                <div className="fpv-indicator">
+                    ★ KAMIKAZE ROCKET MODE ACTIVE ★
+                </div>
+            )}
+        </div>
     );
 }

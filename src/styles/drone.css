@@ -121,3 +121,65 @@
     padding-top: 5px;
     text-align: center;
 }
+
+/* Add FPV styles to the end of the file */
+
+/* First person view indicator */
+.fpv-indicator {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ff5500;
+    font-weight: bold;
+    font-size: 18px;
+    text-shadow: 0 0 10px rgba(255, 85, 0, 0.7), 0 0 5px rgba(255, 85, 0, 0.7);
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 8px 20px;
+    border-radius: 20px;
+    letter-spacing: 2px;
+    border: 2px solid #ff5500;
+    animation: glow 1.5s infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 5px rgba(255, 85, 0, 0.5);
+    }
+
+    to {
+        box-shadow: 0 0 20px rgba(255, 85, 0, 0.9);
+    }
+}
+
+/* First person toggle button */
+.first-person-toggle {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background: #555;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    z-index: 1000;
+    transition: background-color 0.3s, transform 0.1s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.first-person-toggle:hover {
+    background: #666;
+    transform: translateY(-2px);
+}
+
+.first-person-toggle:active {
+    transform: translateY(1px);
+}
+
+/* Active state for FPV button */
+.first-person-toggle.active {
+    background: #ff5500;
+}

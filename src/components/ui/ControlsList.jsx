@@ -1,8 +1,12 @@
 import React from 'react';
 import './ControlsList.css';
+import { useDrones, DRONE_TYPES } from '../../utils/DronesContext';
 
 export default function ControlsList() {
-    const controls = [
+    const { currentDrone } = useDrones();
+
+    // Base controls always shown
+    const baseControls = [
         { key: 'W', action: 'Move Forward' },
         { key: 'S', action: 'Move Backward' },
         { key: 'A', action: 'Strafe Left' },
@@ -15,6 +19,19 @@ export default function ControlsList() {
         { key: '2', action: 'Select Kamikaze' },
         { key: '3', action: 'Select Bomber' }
     ];
+
+    // Drone-specific controls
+    const droneSpecificControls = {
+        [DRONE_TYPES.KAMIKAZE]: [
+            { key: 'V', action: 'Toggle First Person View' },
+            { key: 'MOUSE', action: 'Control Direction (in FPV)' }
+        ],
+        [DRONE_TYPES.GRENADIER]: [],
+        [DRONE_TYPES.BOMBER]: []
+    };
+
+    // Combine base controls with drone-specific ones
+    const controls = [...baseControls, ...(droneSpecificControls[currentDrone] || [])];
 
     return (
         <div className="controls-list">
