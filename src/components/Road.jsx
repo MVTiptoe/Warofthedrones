@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { TERRAIN_SIZE } from './Terrain';
 
 // Road constants
-export const ROAD_WIDTH = 80;
+export const ROAD_WIDTH = 88;
 export const ROAD_EXTENSION = ROAD_WIDTH * 0.1; // 10% extension on each side
 export const TOTAL_ROAD_WIDTH = ROAD_WIDTH + (ROAD_EXTENSION * 2); // Total width including extensions
 export const ROAD_SPACING = 300; // Space between the two parallel roads (increased from 200 to 300, 50% more)

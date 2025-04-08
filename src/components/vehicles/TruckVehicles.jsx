@@ -238,11 +238,7 @@ export const MilitaryTruck1 = (props) => (
       <boxGeometry args={[0.15, 1.2, 3.6]} />
       <meshStandardMaterial color="#4d5d28" />
     </mesh>
-    {/* Gun mount */}
-    <mesh position={[0, 1.6, 1.5]}>
-      <cylinderGeometry args={[0.6, 0.5, 0.4, 8]} />
-      <meshStandardMaterial color="#3A5F0B" />
-    </mesh>
+
     {/* Wheels */}
     {[
       { pos: [-1, 0.2, -2] },
@@ -266,43 +262,43 @@ export const MilitaryTruck2 = (props) => (
     {/* Cab section */}
     <mesh position={[0, 0.6, -2.2]}>
       <boxGeometry args={[2.6, 1.3, 1.9]} />
-      <meshStandardMaterial color="#8B4513" />
+      <meshStandardMaterial color="#4B5320" /> {/* Olive drab */}
     </mesh>
     {/* Main cargo/troop section */}
     <mesh position={[0, 0.6, 0.9]}>
       <boxGeometry args={[2.6, 1.3, 3.8]} />
-      <meshStandardMaterial color="#8B4513" />
+      <meshStandardMaterial color="#4B5320" /> {/* Olive drab */}
     </mesh>
     {/* Armor plating overlay */}
-    <mesh position={[0, 1.1, -2.2]}>
+    <mesh position={[0, 1.3, -2.2]}>
       <boxGeometry args={[2.7, 0.3, 2]} />
-      <meshStandardMaterial color="#A0522D" />
+      <meshStandardMaterial color="#5E6142" /> {/* Darker olive */}
     </mesh>
-    <mesh position={[0, 1.1, 0.9]}>
+    <mesh position={[0, 1.3, 0.9]}>
       <boxGeometry args={[2.7, 0.3, 3.9]} />
-      <meshStandardMaterial color="#A0522D" />
+      <meshStandardMaterial color="#5E6142" /> {/* Darker olive */}
     </mesh>
     {/* Reinforced bumper */}
     <mesh position={[0, 0.4, -3.2]}>
       <boxGeometry args={[2.5, 0.6, 0.2]} />
-      <meshStandardMaterial color="#5d4037" />
+      <meshStandardMaterial color="#3A3A3A" /> {/* Dark gunmetal */}
     </mesh>
     {/* Simplified side-mounted equipment */}
     <mesh position={[-1.4, 0.7, -2.2]}>
       <boxGeometry args={[0.2, 0.4, 1.8]} />
-      <meshStandardMaterial color="#6d4c41" />
+      <meshStandardMaterial color="#3D3D29" /> {/* Dark khaki */}
     </mesh>
     <mesh position={[1.4, 0.7, -2.2]}>
       <boxGeometry args={[0.2, 0.4, 1.8]} />
-      <meshStandardMaterial color="#6d4c41" />
+      <meshStandardMaterial color="#3D3D29" /> {/* Dark khaki */}
     </mesh>
     <mesh position={[-1.4, 0.7, 0.9]}>
       <boxGeometry args={[0.2, 0.4, 3.6]} />
-      <meshStandardMaterial color="#6d4c41" />
+      <meshStandardMaterial color="#3D3D29" /> {/* Dark khaki */}
     </mesh>
     <mesh position={[1.4, 0.7, 0.9]}>
       <boxGeometry args={[0.2, 0.4, 3.6]} />
-      <meshStandardMaterial color="#6d4c41" />
+      <meshStandardMaterial color="#3D3D29" /> {/* Dark khaki */}
     </mesh>
     {/* Wheels */}
     {[
@@ -327,63 +323,57 @@ export const MilitaryTruck3 = (props) => (
     {/* Cab section */}
     <mesh position={[0, 0.65, -2]}>
       <boxGeometry args={[2.4, 1.2, 1.8]} />
-      <meshStandardMaterial color="#2F4F4F" />
+      <meshStandardMaterial color="#5D5D3C" /> {/* Military tan/olive */}
     </mesh>
     {/* Cargo/troop section */}
     <mesh position={[0, 0.65, 0.8]}>
       <boxGeometry args={[2.4, 1.2, 3.6]} />
-      <meshStandardMaterial color="#2F4F4F" />
+      <meshStandardMaterial color="#5D5D3C" /> {/* Military tan/olive */}
     </mesh>
     {/* Reinforced roof */}
-    <mesh position={[0, 1.1, -2]}>
+    <mesh position={[0, 1.35, -2]}>
       <boxGeometry args={[2.5, 0.3, 1.9]} />
-      <meshStandardMaterial color="#708090" />
+      <meshStandardMaterial color="#6E7B58" /> {/* Lighter olive */}
     </mesh>
-    <mesh position={[0, 1.1, 0.8]}>
+    <mesh position={[0, 1.35, 0.8]}>
       <boxGeometry args={[2.5, 0.3, 3.7]} />
-      <meshStandardMaterial color="#708090" />
+      <meshStandardMaterial color="#6E7B58" /> {/* Lighter olive */}
     </mesh>
     {/* Equipment rack */}
-    <mesh position={[0, 1.3, -1.5]}>
+    <mesh position={[0, 1.55, -1.5]}>
       <boxGeometry args={[1.2, 0.3, 1.4]} />
-      <meshStandardMaterial color="#696969" />
+      <meshStandardMaterial color="#4A4A3A" /> {/* Dark olive */}
     </mesh>
-    {/* Antenna arrays */}
-    {[-0.8, 0, 0.8].map((x, i) => (
-      <mesh key={`ant-${i}`} position={[x, 1.4, -2]}>
-        <cylinderGeometry args={[0.03, 0.01, 1.2, 8]} />
-        <meshStandardMaterial color="#111" />
-      </mesh>
-    ))}
+
     {/* Armored windshield */}
     <mesh position={[0, 1, -2.7]} rotation={[0.2, 0, 0]}>
       <boxGeometry args={[2, 0.6, 0.2]} />
-      <meshStandardMaterial color="#36454F" />
+      <meshStandardMaterial color="#424236" /> {/* Dark military green */}
     </mesh>
     {/* Side storage boxes */}
     <mesh position={[-1.3, 0.6, -2]}>
       <boxGeometry args={[0.2, 0.5, 1.6]} />
-      <meshStandardMaterial color="#4F666A" />
+      <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
     <mesh position={[1.3, 0.6, -2]}>
       <boxGeometry args={[0.2, 0.5, 1.6]} />
-      <meshStandardMaterial color="#4F666A" />
+      <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
     <mesh position={[-1.3, 0.6, 0]}>
       <boxGeometry args={[0.2, 0.5, 1.8]} />
-      <meshStandardMaterial color="#4F666A" />
+      <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
     <mesh position={[1.3, 0.6, 0]}>
       <boxGeometry args={[0.2, 0.5, 1.8]} />
-      <meshStandardMaterial color="#4F666A" />
+      <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
     <mesh position={[-1.3, 0.6, 1.8]}>
       <boxGeometry args={[0.2, 0.5, 1.8]} />
-      <meshStandardMaterial color="#4F666A" />
+      <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
     <mesh position={[1.3, 0.6, 1.8]}>
       <boxGeometry args={[0.2, 0.5, 1.8]} />
-      <meshStandardMaterial color="#4F666A" />
+      <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
     {/* Wheels */}
     {[

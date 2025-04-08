@@ -33,7 +33,9 @@ const LANE_TYPES = {
 const VEHICLE_LENGTH = 16; // Updated for 4x scale (was 12 for 3x scale)
 const MINIMUM_DISTANCE = 60; // Updated to match civilian distance
 const CIVILIAN_MINIMUM_DISTANCE = 60; // Increased spacing for civilian vehicles (60 meters)
-const COLUMN_VEHICLE_SPACING = 33; // Increased by 10% from 30 meters distance between vehicles in a column
+const COLUMN_VEHICLE_SPACING = 40; // Increased by 10% from 30 meters distance between vehicles in a column
+const TANK_SPACING = 55; // 20% more distance for tanks (new constant)
+const IFV_SPACING = 45; // 20% more distance for IFVs (new constant)
 const SAFE_DISTANCE = Math.max(VEHICLE_LENGTH * 1.8, MINIMUM_DISTANCE); // Updated to match civilian safe distance
 const CIVILIAN_SAFE_DISTANCE = Math.max(VEHICLE_LENGTH * 1.8, CIVILIAN_MINIMUM_DISTANCE); // Increased safe distance for civilian vehicles
 
@@ -351,8 +353,14 @@ export default function VehiclesOnRoad() {
                             hitbox: { width: 1.33, height: 1.33, depth: 4.0 }
                         });
 
-                        // Move to next vehicle position (subtract for negative direction)
-                        currentX += lane.direction * COLUMN_VEHICLE_SPACING;
+                        // Move to next vehicle position - use specific spacing based on vehicle type
+                        if (vehicleGroup.type === 'tank') {
+                            currentX += lane.direction * TANK_SPACING;
+                        } else if (vehicleGroup.type === 'ifv') {
+                            currentX += lane.direction * IFV_SPACING;
+                        } else {
+                            currentX += lane.direction * COLUMN_VEHICLE_SPACING;
+                        }
                         vehicleIndex++;
                     }
                 }
@@ -1453,8 +1461,14 @@ export default function VehiclesOnRoad() {
                 // Add to new vehicles
                 newVehicles.push(vehicle);
 
-                // Move to next vehicle position
-                currentX += direction * COLUMN_VEHICLE_SPACING;
+                // Move to next vehicle position - use specific spacing based on vehicle type
+                if (vehicleGroup.type === 'tank') {
+                    currentX += direction * TANK_SPACING;
+                } else if (vehicleGroup.type === 'ifv') {
+                    currentX += direction * IFV_SPACING;
+                } else {
+                    currentX += direction * COLUMN_VEHICLE_SPACING;
+                }
                 vehicleIndex++;
             }
         }
