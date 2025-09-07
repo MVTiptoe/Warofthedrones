@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useKeyboardControls } from '@react-three/drei';
-import { useDrones, DRONE_TYPES } from '../utils/DronesContext';
+import { useDrones, DRONE_TYPES } from '../utils/GameContext';
 import { Controls } from './KeyboardControls';
 import '../styles/droneSelector.css';
 
@@ -14,6 +14,7 @@ export default function DroneSelector() {
             if (state[Controls.selectDrone1]) switchDrone(DRONE_TYPES.GRENADIER);
             if (state[Controls.selectDrone2]) switchDrone(DRONE_TYPES.KAMIKAZE);
             if (state[Controls.selectDrone3]) switchDrone(DRONE_TYPES.BOMBER);
+            if (state[Controls.selectDrone4]) switchDrone(DRONE_TYPES.PLAYER);
         });
     }, [subscribeKeys, switchDrone]);
 
@@ -46,6 +47,15 @@ export default function DroneSelector() {
                     <div className="icon bomber">✈️</div>
                     <div>Bomber</div>
                     <div className="key-hint">3</div>
+                </button>
+
+                <button
+                    className={`selector-button ${currentDrone === DRONE_TYPES.PLAYER ? 'active' : ''}`}
+                    onClick={() => switchDrone(DRONE_TYPES.PLAYER)}
+                >
+                    <div className="icon player">👤</div>
+                    <div>Player</div>
+                    <div className="key-hint">4</div>
                 </button>
             </div>
         </div>

@@ -2,10 +2,11 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
-import { TERRAIN_SIZE } from './Terrain';
+import { ORIGINAL_TERRAIN_SIZE, HALF_WIDTH_TERRAIN_SIZE, DESERT_TERRAIN_SIZE } from './Terrain';
+import { useMapStore } from '../utils/MapStore';
 
 // Constants for our environment objects
-const ROAD_WIDTH = 140; // Updated to account for the extended road width (80 base + 8 extensions on each side + 18 brown stripes) plus safety margin
+const ROAD_WIDTH = 148; // Updated to account for the increased road width (88 base + 8 extensions on each side + 18 brown stripes) plus safety margin
 const ROAD_SPACING = 300; // Updated to match the value in Road.jsx (changed from 200 to 300)
 const MIN_SCALE = 1.2;
 const MAX_SCALE = 1.8;
@@ -92,12 +93,13 @@ function seededRandom(seed) {
 }
 
 // Deterministic fixed positions generator
-function generateFixedPositions(seed) {
+function generateFixedPositions(seed, terrainSize, mapType) {
     // Initialize our spatial hash grid for position checking
-    const halfSize = TERRAIN_SIZE / 2;
+    const halfWidth = terrainSize.width / 2;
+    const halfHeight = terrainSize.height / 2;
     const bounds = {
-        min: { x: -halfSize, z: -halfSize },
-        max: { x: halfSize, z: halfSize }
+        min: { x: -halfWidth, z: -halfHeight },
+        max: { x: halfWidth, z: halfHeight }
     };
     const grid = new SpatialHashGrid(bounds, { x: 20, z: 20 });
 
@@ -113,6 +115,7 @@ function generateFixedPositions(seed) {
     const trees = { pine: [], oak: [], palm: [], birch: [] };
     const rocks = [];
     const bushes = [];
+    const cacti = []; // Add cacti for desert map
 
     // Minimum required distance between objects to avoid overlapping
     const MIN_DISTANCE = 12;
@@ -149,8 +152,8 @@ function generateFixedPositions(seed) {
             const randType = Math.floor(seededRandom(seedValue * 5.9) * 4);
 
             // Calculate position using deterministic randomness
-            const x = randX * TERRAIN_SIZE - halfSize;
-            const z = randZ * TERRAIN_SIZE - halfSize;
+            const x = randX * terrainSize.width - halfWidth;
+            const z = randZ * terrainSize.height - halfHeight;
 
             // Skip if position is invalid (deterministic skipping)
             if (!isPositionValid(x, z, minDistance)) continue;
@@ -175,6 +178,8 @@ function generateFixedPositions(seed) {
                 rocks.push(object);
             } else if (objectType === 'bush') {
                 bushes.push(object);
+            } else if (objectType === 'cactus') {
+                cacti.push(object);
             }
 
             // Insert into spatial grid
@@ -182,15 +187,40 @@ function generateFixedPositions(seed) {
         }
     };
 
+    // Scale object count based on map size and type
+    const sizeRatio = (terrainSize.width * terrainSize.height) / (ORIGINAL_TERRAIN_SIZE * ORIGINAL_TERRAIN_SIZE);
+
+    // Adjust counts based on map type
+    let treeCount, rockCount, bushCount, cactusCount;
+
+    if (mapType === 'desert') {
+        // Desert has fewer trees, more rocks, less bushes, and adds cacti
+        treeCount = Math.floor(80 * sizeRatio);  // Very few trees
+        rockCount = Math.floor(300 * sizeRatio); // More rocks
+        bushCount = Math.floor(100 * sizeRatio); // Fewer bushes
+        cactusCount = Math.floor(150 * sizeRatio); // Add cacti
+    } else {
+        // Original map distribution
+        treeCount = Math.floor(600 * sizeRatio);
+        rockCount = Math.floor(150 * sizeRatio);
+        bushCount = Math.floor(300 * sizeRatio);
+        cactusCount = 0; // No cacti in original map
+    }
+
     // Generate fixed number of objects with deterministic positioning
-    addObject(trees, 'tree', 0, 600, MIN_DISTANCE);
-    addObject(rocks, 'rock', 10000, 150, MIN_DISTANCE / 3);
-    addObject(bushes, 'bush', 20000, 300, MIN_DISTANCE / 3);
+    addObject(trees, 'tree', 0, treeCount, MIN_DISTANCE);
+    addObject(rocks, 'rock', 10000, rockCount, MIN_DISTANCE / 3);
+    addObject(bushes, 'bush', 20000, bushCount, MIN_DISTANCE / 3);
+
+    // Add cacti for desert map
+    if (mapType === 'desert') {
+        addObject(cacti, 'cactus', 30000, cactusCount, MIN_DISTANCE);
+    }
 
     // Special large bush positioning (deterministic based on seed)
     const specialSeed = seed * 9876;
-    const specialX = seededRandom(specialSeed) * TERRAIN_SIZE - halfSize;
-    const specialZ = seededRandom(specialSeed + 100) * TERRAIN_SIZE - halfSize;
+    const specialX = seededRandom(specialSeed) * terrainSize.width - halfWidth;
+    const specialZ = seededRandom(specialSeed + 100) * terrainSize.height - halfHeight;
 
     let largeBush = null;
     if (!isOnRoad(specialX, specialZ)) {
@@ -201,10 +231,31 @@ function generateFixedPositions(seed) {
         };
     }
 
-    return { trees, rocks, bushes, largeBush };
+    return { trees, rocks, bushes, cacti, largeBush };
 }
 
 export default function EnvironmentObjects() {
+    // Get current map type from store
+    const { currentMapType } = useMapStore();
+
+    // Get the terrain size based on the current map type
+    const terrainSize = useMemo(() => {
+        if (currentMapType === 'half-width') {
+            return HALF_WIDTH_TERRAIN_SIZE;
+        } else if (currentMapType === 'desert') {
+            return DESERT_TERRAIN_SIZE;
+        }
+        return { width: ORIGINAL_TERRAIN_SIZE, height: ORIGINAL_TERRAIN_SIZE };
+    }, [currentMapType]);
+
+    // Use a fixed seed for deterministic generation
+    const seed = 12345;
+
+    // Generate all environment objects with fixed positions
+    const { trees, rocks, bushes, cacti, largeBush } = useMemo(() => {
+        return generateFixedPositions(seed, terrainSize, currentMapType);
+    }, [seed, terrainSize, currentMapType]);
+
     const { camera } = useThree();
 
     // References to our instanced meshes
@@ -217,6 +268,7 @@ export default function EnvironmentObjects() {
 
     const rocksRef = useRef();
     const bushesRef = useRef();
+    const cactusRef = useRef();
     const largeBushRef = useRef();
 
     // Create a frustum for culling
@@ -224,77 +276,97 @@ export default function EnvironmentObjects() {
     const projScreenMatrix = useMemo(() => new THREE.Matrix4(), []);
     const tempObject = useMemo(() => new THREE.Object3D(), []);
 
-    // Generate fixed positions with a seed for deterministic placement
-    const { trees, rocks, bushes, largeBush } = useMemo(() => {
-        // Use a fixed seed for deterministic generation
-        const seed = 12345;
-        return generateFixedPositions(seed);
-    }, []);
-
     // Materials with optimized settings
-    const treeMaterials = useMemo(() => ({
-        pine: {
-            trunk: new THREE.MeshStandardMaterial({
-                color: '#8B4513',
-                roughness: 0.8,
-                flatShading: true // Reduces shader complexity
-            }),
-            foliage: new THREE.MeshStandardMaterial({
-                color: '#2E8B57',
-                roughness: 0.7,
-                flatShading: true
-            })
-        },
-        oak: {
-            trunk: new THREE.MeshStandardMaterial({
-                color: '#654321',
-                roughness: 0.9,
-                flatShading: true
-            }),
-            foliage: new THREE.MeshStandardMaterial({
-                color: '#228B22',
-                roughness: 0.6,
-                flatShading: true
-            })
-        },
-        palm: {
-            trunk: new THREE.MeshStandardMaterial({
-                color: '#A0522D',
-                roughness: 0.7,
-                flatShading: true
-            }),
-            foliage: new THREE.MeshStandardMaterial({
-                color: '#32CD32',
-                roughness: 0.8,
-                flatShading: true
-            })
-        },
-        birch: {
-            trunk: new THREE.MeshStandardMaterial({
-                color: '#F5F5DC',
-                roughness: 0.6,
-                flatShading: true
-            }),
-            foliage: new THREE.MeshStandardMaterial({
-                color: '#ADFF2F',
-                roughness: 0.7,
-                flatShading: true
-            })
-        }
-    }), []);
+    const treeMaterials = useMemo(() => {
+        const baseMaterials = {
+            pine: {
+                trunk: new THREE.MeshStandardMaterial({
+                    color: '#8B4513',
+                    roughness: 0.8,
+                    flatShading: true
+                }),
+                foliage: new THREE.MeshStandardMaterial({
+                    color: '#2E8B57',
+                    roughness: 0.7,
+                    flatShading: true
+                })
+            },
+            oak: {
+                trunk: new THREE.MeshStandardMaterial({
+                    color: '#654321',
+                    roughness: 0.9,
+                    flatShading: true
+                }),
+                foliage: new THREE.MeshStandardMaterial({
+                    color: '#228B22',
+                    roughness: 0.6,
+                    flatShading: true
+                })
+            },
+            palm: {
+                trunk: new THREE.MeshStandardMaterial({
+                    color: '#A0522D',
+                    roughness: 0.7,
+                    flatShading: true
+                }),
+                foliage: new THREE.MeshStandardMaterial({
+                    color: '#32CD32',
+                    roughness: 0.8,
+                    flatShading: true
+                })
+            },
+            birch: {
+                trunk: new THREE.MeshStandardMaterial({
+                    color: '#F5F5DC',
+                    roughness: 0.6,
+                    flatShading: true
+                }),
+                foliage: new THREE.MeshStandardMaterial({
+                    color: '#ADFF2F',
+                    roughness: 0.7,
+                    flatShading: true
+                })
+            }
+        };
 
-    const rockMaterial = useMemo(() =>
-        new THREE.MeshStandardMaterial({
-            color: '#7D7D7D',
+        // For desert, make the trees look more dry
+        if (currentMapType === 'desert') {
+            // Adjust colors for desert trees (more pale and dry)
+            baseMaterials.pine.foliage.color = new THREE.Color('#8B8B65'); // Pale olive
+            baseMaterials.oak.foliage.color = new THREE.Color('#9B9B65'); // Pale brown-green
+            baseMaterials.palm.foliage.color = new THREE.Color('#A8C27D'); // Pale green
+            baseMaterials.birch.foliage.color = new THREE.Color('#D3D3A4'); // Pale yellow-green
+        }
+
+        return baseMaterials;
+    }, [currentMapType]);
+
+    const rockMaterial = useMemo(() => {
+        // Desert rocks are more reddish/orange
+        const color = currentMapType === 'desert' ? '#B8860B' : '#7D7D7D';
+
+        return new THREE.MeshStandardMaterial({
+            color: color,
             roughness: 1.0,
             flatShading: true
-        }),
-        []);
+        });
+    }, [currentMapType]);
 
-    const bushMaterial = useMemo(() =>
-        new THREE.MeshStandardMaterial({
-            color: '#3A5F0B',
+    const bushMaterial = useMemo(() => {
+        // Desert bushes are more dried out
+        const color = currentMapType === 'desert' ? '#8B8B6A' : '#3A5F0B';
+
+        return new THREE.MeshStandardMaterial({
+            color: color,
             roughness: 0.7,
+            flatShading: true
+        });
+    }, [currentMapType]);
+
+    const cactusMaterial = useMemo(() =>
+        new THREE.MeshStandardMaterial({
+            color: '#4C7F50',
+            roughness: 0.8,
             flatShading: true
         }),
         []);
@@ -302,6 +374,7 @@ export default function EnvironmentObjects() {
     // Create optimized geometries
     const rockGeometry = useMemo(() => new THREE.IcosahedronGeometry(1, 0), []);
     const bushGeometry = useMemo(() => new THREE.SphereGeometry(2, 6, 4), []);
+    const cactusGeometry = useMemo(() => new THREE.CylinderGeometry(0.8, 1.2, 5, 8, 4), []);
 
     // Tree dimension presets
     const treeDimensions = useMemo(() => ({
@@ -504,6 +577,31 @@ export default function EnvironmentObjects() {
             }
         }
 
+        // Setup cacti if on desert map
+        if (cactusRef.current && cacti.length > 0) {
+            cacti.forEach((cactus, i) => {
+                const [x, y, z] = cactus.position;
+                const scale = cactus.scale;
+
+                // Raise by half height to sit on ground
+                const objectY = 2.5 * scale;
+
+                tempObject.position.set(x, objectY, z);
+                tempObject.rotation.set(0, cactus.rotation, 0);
+                tempObject.scale.setScalar(scale);
+                tempObject.updateMatrix();
+
+                cactusRef.current.setMatrixAt(i, tempObject.matrix);
+            });
+            cactusRef.current.instanceMatrix.needsUpdate = true;
+
+            // Update bounding sphere for proper frustum culling
+            cactusRef.current.computeBoundingSphere();
+            if (cactusRef.current.boundingSphere) {
+                cactusRef.current.boundingSphere.radius *= 1.5;
+            }
+        }
+
         // Setup large bush
         if (largeBushRef.current && largeBush) {
             const [x, y, z] = largeBush.position;
@@ -523,7 +621,7 @@ export default function EnvironmentObjects() {
             // Update bounding sphere for proper frustum culling
             largeBushRef.current.computeBoundingSphere();
         }
-    }, [trees, rocks, bushes, largeBush, treeDimensions, tempObject]);
+    }, [trees, rocks, bushes, cacti, largeBush, treeDimensions, tempObject]);
 
     // Setup distance-based culling and optimization in animation frame
     useFrame(({ camera }) => {
@@ -571,6 +669,12 @@ export default function EnvironmentObjects() {
         if (largeBushRef.current && largeBushRef.current.boundingSphere) {
             const largeDistance = largeBushRef.current.boundingSphere.center.distanceTo(cameraPosition);
             largeBushRef.current.visible = (largeDistance < FAR_DISTANCE);
+        }
+
+        // Apply distance-based optimizations for cacti
+        if (cactusRef.current && cactusRef.current.boundingSphere) {
+            const cactiDistance = cactusRef.current.boundingSphere.center.distanceTo(cameraPosition);
+            cactusRef.current.visible = (cactiDistance < FAR_DISTANCE);
         }
     });
 
@@ -623,6 +727,15 @@ export default function EnvironmentObjects() {
                 frustumCulled={true}
             />
 
+            {/* Cacti for desert map */}
+            {currentMapType === 'desert' && cacti.length > 0 && (
+                <instancedMesh
+                    ref={cactusRef}
+                    args={[cactusGeometry, cactusMaterial, cacti.length]}
+                    frustumCulled={true}
+                />
+            )}
+
             {/* Special Large Bush */}
             {largeBush && (
                 <mesh
@@ -631,7 +744,7 @@ export default function EnvironmentObjects() {
                 >
                     <sphereGeometry args={[2, 10, 8]} />
                     <meshStandardMaterial
-                        color="#2D5B0A"
+                        color={currentMapType === 'desert' ? '#8B8B6A' : '#2D5B0A'}
                         roughness={0.6}
                         metalness={0.1}
                         flatShading={true}

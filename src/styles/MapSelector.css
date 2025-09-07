@@ -1,0 +1,54 @@
+.map-selector {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    gap: 10px;
+}
+
+.map-button {
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 2px solid #444;
+    border-radius: 5px;
+    padding: 10px 15px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.map-button:hover {
+    background-color: rgba(30, 30, 30, 0.8);
+    border-color: #666;
+}
+
+.map-button.active {
+    background-color: rgba(60, 120, 200, 0.8);
+    border-color: #8af;
+}
+
+/* Custom styles for each map type when active */
+.map-button.active[onClick*="original"] {
+    background-color: rgba(60, 120, 60, 0.8);
+    border-color: #7c7;
+}
+
+.map-button.active[onClick*="desert"] {
+    background-color: rgba(180, 130, 50, 0.8);
+    border-color: #db8;
+}
+
+@media (max-width: 768px) {
+    .map-selector {
+        top: auto;
+        bottom: 100px;
+        right: 10px;
+        flex-direction: column;
+    }
+
+    .map-button {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+}

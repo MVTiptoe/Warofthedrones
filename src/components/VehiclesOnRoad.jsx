@@ -4,12 +4,17 @@ import * as THREE from 'three';
 import { VehicleTypes } from './vehicles';
 import { EnhancedVehicleTypes } from './vehicles/enhancedVehicles';
 import { ROAD_WIDTH, ROAD_SPACING, TOTAL_ROAD_WIDTH, ROAD_EXTENSION } from './Road';
-import { TERRAIN_SIZE } from './Terrain';
+import { ORIGINAL_TERRAIN_SIZE, HALF_WIDTH_TERRAIN_SIZE } from './Terrain';
 import { useVehicleHealthStore } from '../utils/VehicleHealthSystem';
+import { useMapStore } from '../utils/MapStore';
 
 // Vehicle movement speed in units per second
 const SPEED_MIN = 0.216;  // Increased by 20% from 0.18
 const SPEED_MAX = 0.3;    // Increased by 20% from 0.25
+
+// Special speeds for cars and civilian trucks (44% faster - increased by 15% from previous 25%)
+const CAR_CIVILIAN_SPEED_MIN = SPEED_MIN * 1.44;  // 44% faster than standard (25% + 15% more)
+const CAR_CIVILIAN_SPEED_MAX = SPEED_MAX * 1.44;  // 44% faster than standard (25% + 15% more)
 
 // Number of vehicles to spawn per road
 const VEHICLES_PER_ROAD = 8; // Reduced from 11 to further reduce congestion
@@ -47,7 +52,7 @@ const CIVILIAN_EMERGENCY_DISTANCE = 45; // Fixed 45 meter emergency distance for
 
 // Traffic jam recovery settings
 const TRAFFIC_JAM_SPEED_THRESHOLD = 0.05; // Speed below this is considered "stopped"
-const TRAFFIC_JAM_RECOVERY_BOOST = 1.2; // Speed boost when recovering from traffic jam
+const TRAFFIC_JAM_RECOVERY_BOOST = 1.1; // Reduced from 1.2 to prevent excessive acceleration
 const TRAFFIC_JAM_CHECK_INTERVAL = 500; // Check every 0.5 seconds
 
 // Delay after vehicle destruction before column resumes movement
@@ -161,6 +166,11 @@ function getRandomVehicleOfType(type) {
     return matchingVehicles.length > 0 ? getRandomItem(matchingVehicles) : null;
 }
 
+// Function to check if vehicle is a car or civilian truck
+function isCarOrCivilianTruck(vehicleType) {
+    return vehicleType.includes('car_') || vehicleType.includes('civilian_truck_');
+}
+
 export default function VehiclesOnRoad() {
     const [vehicles, setVehicles] = useState([]);
     const initializedRef = useRef(false);
@@ -186,6 +196,17 @@ export default function VehiclesOnRoad() {
             left: new THREE.Euler(0, Math.PI / 2, 0)
         };
     }, []);
+
+    // Get current map type from store
+    const { currentMapType } = useMapStore();
+
+    // Get the terrain size based on the current map type
+    const terrainSize = useMemo(() => {
+        if (currentMapType === 'half-width') {
+            return HALF_WIDTH_TERRAIN_SIZE;
+        }
+        return { width: ORIGINAL_TERRAIN_SIZE, height: ORIGINAL_TERRAIN_SIZE };
+    }, [currentMapType]);
 
     // Function to detect congestion in a road section
     const detectCongestion = (allVehicles) => {
@@ -315,12 +336,12 @@ export default function VehiclesOnRoad() {
 
                 // Generate a random position along the road for the column to spawn
                 // Use a range within the terrain size with some padding
-                const randomOffset = Math.random() * (TERRAIN_SIZE * 0.7) - (TERRAIN_SIZE * 0.35);
+                const randomOffset = Math.random() * (terrainSize.width * 0.7) - (terrainSize.width * 0.35);
 
                 // Starting position for the column - random point on the road
                 const startingX = lane.direction > 0 ?
-                    -TERRAIN_SIZE / 2 + 100 + randomOffset : // For positive direction
-                    TERRAIN_SIZE / 2 - 100 + randomOffset;  // For negative direction
+                    -terrainSize.width / 2 + 100 + randomOffset : // For positive direction
+                    terrainSize.width / 2 - 100 + randomOffset;  // For negative direction
 
                 let currentX = startingX;
                 let vehicleIndex = 0;
@@ -333,6 +354,10 @@ export default function VehiclesOnRoad() {
 
                         const vehicleId = `${columnId}-${vehicleGroup.type}-${i}`;
 
+                        // Adjust speed based on vehicle type (cars and civilian trucks are 25% faster)
+                        const baseSpeedMin = isCarOrCivilianTruck(vehicleType) ? CAR_CIVILIAN_SPEED_MIN : SPEED_MIN;
+                        const baseSpeedMax = isCarOrCivilianTruck(vehicleType) ? CAR_CIVILIAN_SPEED_MAX : SPEED_MAX;
+
                         newVehicles.push({
                             id: vehicleId,
                             type: vehicleType,
@@ -344,7 +369,7 @@ export default function VehiclesOnRoad() {
                                 lane.z + (Math.random() * 0.2 - 0.1)
                             ),
                             rotation: lane.direction > 0 ? rotationMap.right : rotationMap.left,
-                            speed: SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN) * 0.5,
+                            speed: baseSpeedMin + Math.random() * (baseSpeedMax - baseSpeedMin),
                             direction: lane.direction,
                             lane: lane.z,
                             road: roadZ,
@@ -369,7 +394,7 @@ export default function VehiclesOnRoad() {
             // Populate slow lanes with civilian vehicles
             slowLanes.forEach(lane => {
                 // Check for congestion in this lane's direction and road
-                const roadSection = `${Math.floor(-TERRAIN_SIZE / 2 / 100)}-${roadZ}-${lane.direction}`;
+                const roadSection = `${Math.floor(-terrainSize.width / 2 / 100)}-${roadZ}-${lane.direction}`;
                 const isCongested = congestionMapRef.current.has(roadSection);
 
                 // Adjust vehicle count based on congestion
@@ -393,17 +418,17 @@ export default function VehiclesOnRoad() {
                     if (!vehicleType) continue;
 
                     // Calculate position with good spacing along the road
-                    const segmentLength = TERRAIN_SIZE / vehiclesPerLane;
+                    const segmentLength = terrainSize.width / vehiclesPerLane;
                     const minSegmentLength = CIVILIAN_MINIMUM_DISTANCE * 1.5;
                     const effectiveSegmentLength = Math.max(segmentLength, minSegmentLength);
 
                     // Create a base position for this vehicle with some randomness
-                    let segmentStart = -TERRAIN_SIZE / 2 + (i * effectiveSegmentLength);
+                    let segmentStart = -terrainSize.width / 2 + (i * effectiveSegmentLength);
                     let xPos = segmentStart + Math.random() * (effectiveSegmentLength * 0.6);
 
                     // Calculate Z position with slight random variation
                     const zJitter = Math.random() * 0.5 - 0.25; // Small random Z variation for visual interest
-                    const zPos = lane.z + zJitter;
+                    let zPos = lane.z + zJitter;
 
                     // Check for conflicts with existing vehicles in the same lane
                     let hasConflict = false;
@@ -448,11 +473,13 @@ export default function VehiclesOnRoad() {
                     // Adjust hitbox dimensions based on vehicle type
                     let hitbox;
                     if (vehicleType.includes('car_')) {
-                        hitbox = { width: 1.0, height: 1.0, depth: 3.0 }; // Car hitbox
+                        hitbox = { width: 2.0, height: 1.0, depth: 4.0 }; // Car hitbox - increased width
                     } else if (vehicleType === 'civilian_truck_1') {
-                        hitbox = { width: 1.2, height: 1.4, depth: 6.2 }; // Specific hitbox for CivilianTruck1 with trailer
+                        hitbox = { width: 2.4, height: 1.5, depth: 6.5 }; // Specific hitbox for CivilianTruck1 with trailer
+                    } else if (vehicleType.includes('civilian_truck_')) {
+                        hitbox = { width: 2.2, height: 1.5, depth: 5.0 }; // Updated hitbox for civilian trucks
                     } else {
-                        hitbox = { width: 1.2, height: 1.2, depth: 4.0 }; // Default truck hitbox - slightly larger
+                        hitbox = { width: 2.0, height: 1.2, depth: 4.5 }; // Default hitbox as fallback
                     }
 
                     newVehicles.push({
@@ -460,7 +487,7 @@ export default function VehiclesOnRoad() {
                         type: vehicleType,
                         position: new THREE.Vector3(xPos, 0.3, zPos),
                         rotation: lane.direction > 0 ? rotationMap.right : rotationMap.left,
-                        speed: SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN),
+                        speed: CAR_CIVILIAN_SPEED_MIN + Math.random() * (CAR_CIVILIAN_SPEED_MAX - CAR_CIVILIAN_SPEED_MIN),
                         direction: lane.direction,
                         lane: lane.z,
                         road: roadZ,
@@ -495,7 +522,7 @@ export default function VehiclesOnRoad() {
                 if (timerId) clearTimeout(timerId);
             });
         };
-    }, [rotationMap, congestionMapRef.current]); // Add congestionMapRef to dependencies
+    }, [rotationMap, congestionMapRef.current, terrainSize]); // Add terrainSize to dependencies
 
     // Memory optimization: Limit the number of timeouts tracked
     useEffect(() => {
@@ -512,8 +539,8 @@ export default function VehiclesOnRoad() {
             setVehicles(prevVehicles => {
                 // Define the valid area boundary for cleanup (larger than rendering boundary)
                 const cleanup_buffer = 150; // larger buffer for cleanup
-                const minX = -TERRAIN_SIZE / 2 - cleanup_buffer;
-                const maxX = TERRAIN_SIZE / 2 + cleanup_buffer;
+                const minX = -terrainSize.width / 2 - cleanup_buffer;
+                const maxX = terrainSize.width / 2 + cleanup_buffer;
 
                 // Define valid Z-coordinate range (road width with buffer)
                 const roadHalfWidth = ROAD_WIDTH / 2;
@@ -560,7 +587,7 @@ export default function VehiclesOnRoad() {
             clearInterval(intervalId);
             clearInterval(cleanupIntervalId);
         };
-    }, []);
+    }, [terrainSize]);
 
     // Pre-compute reusable geometries and materials
     const vehicleGeometries = useMemo(() => {
@@ -617,18 +644,32 @@ export default function VehiclesOnRoad() {
                 const sectorKey = `${Math.floor(vehicle.position.x / 10)}-${vehicle.lane}-${vehicle.direction}`;
                 const nextSectorKey = `${Math.floor((vehicle.position.x + (vehicle.direction * 10)) / 10)}-${vehicle.lane}-${vehicle.direction}`;
 
-                // Get vehicles in current and next sector
+                // Check more sectors ahead for better detection at high speeds
+                const farSectorKey = `${Math.floor((vehicle.position.x + (vehicle.direction * 20)) / 10)}-${vehicle.lane}-${vehicle.direction}`;
+                const veryFarSectorKey = `${Math.floor((vehicle.position.x + (vehicle.direction * 30)) / 10)}-${vehicle.lane}-${vehicle.direction}`;
+
+                // Get vehicles in current and next sectors
                 const sectorsToCheck = [
                     vehicleLookupMapRef.current.get(sectorKey) || [],
-                    vehicleLookupMapRef.current.get(nextSectorKey) || []
+                    vehicleLookupMapRef.current.get(nextSectorKey) || [],
+                    vehicleLookupMapRef.current.get(farSectorKey) || [],
+                    vehicleLookupMapRef.current.get(veryFarSectorKey) || []
                 ];
 
-                // Check adjacent lanes too for civilian vehicles
+                // Check adjacent lanes too for civilian vehicles, but only if they're not cars
+                // Cars should be less affected by adjacent lanes than trucks
                 if (!vehicle.isInColumn) {
                     // Calculate adjacent lane keys
                     const laneWidth = LANE_WIDTH; // Use the defined lane width
                     const adjacentLaneUp = vehicle.lane + laneWidth;
                     const adjacentLaneDown = vehicle.lane - laneWidth;
+
+                    // Determine if this is a car (which should have less adjacent lane checking)
+                    const isCar = vehicle.type && vehicle.type.includes('car_');
+
+                    // Adjust the adjacent lane check distance based on vehicle type
+                    // Cars should ignore vehicles in adjacent lanes unless they're very close
+                    const adjacentLaneZThreshold = isCar ? 1.8 : 3.5;
 
                     // Add vehicles from adjacent lanes to check
                     const adjacentSectorKeyUp = `${Math.floor(vehicle.position.x / 10)}-${adjacentLaneUp}-${vehicle.direction}`;
@@ -636,11 +677,25 @@ export default function VehiclesOnRoad() {
                     const nextAdjacentSectorKeyUp = `${Math.floor((vehicle.position.x + (vehicle.direction * 10)) / 10)}-${adjacentLaneUp}-${vehicle.direction}`;
                     const nextAdjacentSectorKeyDown = `${Math.floor((vehicle.position.x + (vehicle.direction * 10)) / 10)}-${adjacentLaneDown}-${vehicle.direction}`;
 
-                    // Add these sectors to our check list
-                    sectorsToCheck.push(vehicleLookupMapRef.current.get(adjacentSectorKeyUp) || []);
-                    sectorsToCheck.push(vehicleLookupMapRef.current.get(adjacentSectorKeyDown) || []);
-                    sectorsToCheck.push(vehicleLookupMapRef.current.get(nextAdjacentSectorKeyUp) || []);
-                    sectorsToCheck.push(vehicleLookupMapRef.current.get(nextAdjacentSectorKeyDown) || []);
+                    // Store the adjacent lane vehicles in a separate array for special handling
+                    const adjacentLaneVehicles = [
+                        ...(vehicleLookupMapRef.current.get(adjacentSectorKeyUp) || []),
+                        ...(vehicleLookupMapRef.current.get(adjacentSectorKeyDown) || []),
+                        ...(vehicleLookupMapRef.current.get(nextAdjacentSectorKeyUp) || []),
+                        ...(vehicleLookupMapRef.current.get(nextAdjacentSectorKeyDown) || [])
+                    ];
+
+                    // For cars, we'll check adjacent lane vehicles separately with a narrower Z threshold
+                    if (isCar) {
+                        // We'll handle these separately below
+                    } else {
+                        // Add all adjacent vehicles to sectors to check for trucks
+                        sectorsToCheck.push(...adjacentLaneVehicles);
+                    }
+
+                    // Store the adjacent lane vehicles on the vehicle object for special handling
+                    vehicle.adjacentLaneVehicles = adjacentLaneVehicles;
+                    vehicle.adjacentLaneZThreshold = adjacentLaneZThreshold;
                 }
 
                 let closestDistance = Infinity;
@@ -655,12 +710,16 @@ export default function VehiclesOnRoad() {
 
                 // Check these filtered vehicles for collision
                 potentialCollisions.forEach(otherVehicle => {
+                    // Skip checking destroyed vehicles
+                    const healthData = getVehicleHealth(otherVehicle.id);
+                    if (healthData && healthData.isDead && healthData.isDestroyed) return;
+
                     // Calculate Z-distance between vehicles
                     const zDistance = Math.abs(otherVehicle.position.z - vehicle.position.z);
 
                     // Only consider vehicles within a certain Z-distance (based on vehicle width)
                     // Use a wider threshold for civilian vehicles to prevent side collisions
-                    const zThreshold = vehicle.isInColumn ? 2.0 : 3.0;
+                    const zThreshold = vehicle.isInColumn ? 2.0 : 3.5;
 
                     if (zDistance < zThreshold) {
                         // For right-moving vehicles
@@ -669,10 +728,9 @@ export default function VehiclesOnRoad() {
                             if (otherVehicle.position.x > vehicle.position.x) {
                                 const distance = otherVehicle.position.x - vehicle.position.x;
 
-                                // Adjust check distance based on Z-distance (closer Z = need more X-distance)
-                                const adjustedCheckDistance = checkDistance * (1 - (zDistance / (zThreshold * 2)));
-
-                                if (distance < adjustedCheckDistance) {
+                                // Use a fixed check distance that doesn't decrease with Z-distance
+                                // This prevents vehicles from thinking they can slip through when they can't
+                                if (distance < checkDistance) {
                                     hasCollision = true;
                                     closestDistance = Math.min(closestDistance, distance);
                                 }
@@ -684,10 +742,8 @@ export default function VehiclesOnRoad() {
                             if (otherVehicle.position.x < vehicle.position.x) {
                                 const distance = vehicle.position.x - otherVehicle.position.x;
 
-                                // Adjust check distance based on Z-distance (closer Z = need more X-distance)
-                                const adjustedCheckDistance = checkDistance * (1 - (zDistance / (zThreshold * 2)));
-
-                                if (distance < adjustedCheckDistance) {
+                                // Use a fixed check distance that doesn't decrease with Z-distance
+                                if (distance < checkDistance) {
                                     hasCollision = true;
                                     closestDistance = Math.min(closestDistance, distance);
                                 }
@@ -695,6 +751,65 @@ export default function VehiclesOnRoad() {
                         }
                     }
                 });
+
+                // Special handling for cars - check adjacent lane vehicles with a narrower Z threshold
+                if (!vehicle.isInColumn && vehicle.type && vehicle.type.includes('car_') && vehicle.adjacentLaneVehicles) {
+                    const adjacentLaneZThreshold = vehicle.adjacentLaneZThreshold || 1.8;
+
+                    vehicle.adjacentLaneVehicles.forEach(otherVehicle => {
+                        // Skip checking destroyed vehicles
+                        const healthData = getVehicleHealth(otherVehicle.id);
+                        if (healthData && healthData.isDead && healthData.isDestroyed) return;
+
+                        // Skip checking military columns unless they're extremely close
+                        if (otherVehicle.isInColumn) {
+                            // Calculate Z-distance between vehicles
+                            const zDistance = Math.abs(otherVehicle.position.z - vehicle.position.z);
+
+                            // Cars should only be affected by military columns if they're extremely close
+                            if (zDistance >= adjacentLaneZThreshold) {
+                                return; // Skip this military column vehicle
+                            }
+                        }
+
+                        // Calculate Z-distance between vehicles
+                        const zDistance = Math.abs(otherVehicle.position.z - vehicle.position.z);
+
+                        // Only consider vehicles within a tighter Z-distance for cars
+                        if (zDistance < adjacentLaneZThreshold) {
+                            // For right-moving vehicles
+                            if (vehicle.direction > 0 && otherVehicle.direction > 0) {
+                                // Check if other vehicle is ahead
+                                if (otherVehicle.position.x > vehicle.position.x) {
+                                    const distance = otherVehicle.position.x - vehicle.position.x;
+
+                                    // For cars, we only care about adjacent lane vehicles that are VERY close
+                                    if (distance < checkDistance * 0.7) {
+                                        hasCollision = true;
+                                        closestDistance = Math.min(closestDistance, distance);
+                                    }
+                                }
+                            }
+                            // For left-moving vehicles
+                            else if (vehicle.direction < 0 && otherVehicle.direction < 0) {
+                                // Check if other vehicle is ahead
+                                if (otherVehicle.position.x < vehicle.position.x) {
+                                    const distance = vehicle.position.x - otherVehicle.position.x;
+
+                                    // For cars, we only care about adjacent lane vehicles that are VERY close
+                                    if (distance < checkDistance * 0.7) {
+                                        hasCollision = true;
+                                        closestDistance = Math.min(closestDistance, distance);
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Clean up our temporary properties
+                    delete vehicle.adjacentLaneVehicles;
+                    delete vehicle.adjacentLaneZThreshold;
+                }
 
                 // Store the closest distance for speed regulation
                 if (hasCollision) {
@@ -889,26 +1004,29 @@ export default function VehiclesOnRoad() {
                         targetSpeed = 0;
                     } else if (hasMinimumDistance) {
                         // Strong slowing down when below minimum distance
-                        const distanceFactor = (vehicle.distanceToNext - CIVILIAN_EMERGENCY_DISTANCE) /
+                        const distanceFactor = Math.max(0, (vehicle.distanceToNext - CIVILIAN_EMERGENCY_DISTANCE)) /
                             (CIVILIAN_MINIMUM_DISTANCE - CIVILIAN_EMERGENCY_DISTANCE);
-                        targetSpeed = originalSpeed * Math.max(0.05, distanceFactor * 0.1);
+                        // More aggressive braking for close vehicles
+                        targetSpeed = originalSpeed * Math.max(0.02, Math.min(0.1, distanceFactor * 0.1));
                     } else if (hasCollisionWarning) {
                         // Gradual slow down based on distance
-                        const distanceFactor = (vehicle.distanceToNext - CIVILIAN_MINIMUM_DISTANCE) /
+                        const distanceFactor = Math.max(0, (vehicle.distanceToNext - CIVILIAN_MINIMUM_DISTANCE)) /
                             (CIVILIAN_DETECTION_DISTANCE - CIVILIAN_MINIMUM_DISTANCE);
-                        targetSpeed = originalSpeed * Math.max(0.3, distanceFactor);
+                        // More aggressive deceleration curve
+                        targetSpeed = originalSpeed * Math.max(0.2, Math.min(0.8, distanceFactor));
                     } else {
                         // No obstacles ahead - recover speed
                         targetSpeed = originalSpeed;
 
                         // Apply boost if recovering from traffic jam
-                        if (isInTrafficJam && vehicle.distanceToNext > CIVILIAN_MINIMUM_DISTANCE) {
+                        // Only boost if we have significant space ahead (more than detection distance)
+                        if (isInTrafficJam && vehicle.distanceToNext > CIVILIAN_DETECTION_DISTANCE * 1.5) {
                             targetSpeed *= TRAFFIC_JAM_RECOVERY_BOOST;
                         }
                     }
 
-                    // Smooth acceleration/deceleration
-                    const accelerationRate = targetSpeed > vehicle.speed ? 0.1 : 0.2; // Faster deceleration
+                    // Smoother, more responsive deceleration
+                    const accelerationRate = targetSpeed > vehicle.speed ? 0.08 : 0.25; // Even faster deceleration than before
                     speed = vehicle.speed + (targetSpeed - vehicle.speed) * accelerationRate;
 
                     // Store current speed for next frame
@@ -925,14 +1043,16 @@ export default function VehiclesOnRoad() {
                         speed = 0;
                     } else if (hasMinimumDistance) {
                         // Strong slowing down when below minimum distance
-                        const distanceFactor = (vehicle.distanceToNext - CIVILIAN_EMERGENCY_DISTANCE) /
+                        const distanceFactor = Math.max(0, (vehicle.distanceToNext - CIVILIAN_EMERGENCY_DISTANCE)) /
                             (CIVILIAN_MINIMUM_DISTANCE - CIVILIAN_EMERGENCY_DISTANCE);
-                        speed = originalSpeed * Math.max(0.05, distanceFactor * 0.1);
+                        // More aggressive braking for close vehicles
+                        speed = originalSpeed * Math.max(0.02, Math.min(0.1, distanceFactor * 0.1));
                     } else if (hasCollisionWarning) {
                         // Gradual slow down based on distance
-                        const distanceFactor = (vehicle.distanceToNext - CIVILIAN_MINIMUM_DISTANCE) /
+                        const distanceFactor = Math.max(0, (vehicle.distanceToNext - CIVILIAN_MINIMUM_DISTANCE)) /
                             (CIVILIAN_DETECTION_DISTANCE - CIVILIAN_MINIMUM_DISTANCE);
-                        speed = originalSpeed * Math.max(0.3, distanceFactor);
+                        // More aggressive deceleration curve
+                        speed = originalSpeed * Math.max(0.2, Math.min(0.8, distanceFactor));
                     }
                 }
 
@@ -945,17 +1065,17 @@ export default function VehiclesOnRoad() {
                 const newX = vehicle.position.x + (newSpeed * vehicle.direction * delta * 60);
 
                 // Calculate the new position by modifying existing Vector3 instead of creating a new one
-                if (vehicle.direction > 0 && newX > TERRAIN_SIZE / 2) {
+                if (vehicle.direction > 0 && newX > terrainSize.width / 2) {
                     // Reset to the beginning of the road (right direction vehicles)
-                    tempVector3.set(-TERRAIN_SIZE / 2, 0.3, vehicle.position.z);
+                    tempVector3.set(-terrainSize.width / 2, 0.3, vehicle.position.z);
                     vehicle.position.copy(tempVector3);
                     return {
                         ...vehicle,
                         speed: vehicle.speed
                     };
-                } else if (vehicle.direction < 0 && newX < -TERRAIN_SIZE / 2) {
+                } else if (vehicle.direction < 0 && newX < -terrainSize.width / 2) {
                     // Reset to the beginning of the road (left direction vehicles)
-                    tempVector3.set(TERRAIN_SIZE / 2, 0.3, vehicle.position.z);
+                    tempVector3.set(terrainSize.width / 2, 0.3, vehicle.position.z);
                     vehicle.position.copy(tempVector3);
                     return {
                         ...vehicle,
@@ -966,67 +1086,7 @@ export default function VehiclesOnRoad() {
                 // Update position by modifying the existing object
                 tempVector3.set(newX, vehicle.position.y, vehicle.position.z);
 
-                // Update the individual vehicle update logic to improve anti-traffic-jam measures
-                if (!vehicle.isInColumn) {  // Only for civilian vehicles
-                    // Check if vehicle is in a potential traffic jam (very slow for several frames)
-                    if (!vehicle.jamCounter) vehicle.jamCounter = 0;
-                    if (!vehicle.lastJamCheck) vehicle.lastJamCheck = currentTime;
-
-                    // Only update jam status periodically to avoid rapid changes
-                    if (currentTime - vehicle.lastJamCheck > TRAFFIC_JAM_CHECK_INTERVAL) {
-                        if (vehicle.speed < TRAFFIC_JAM_SPEED_THRESHOLD) {
-                            vehicle.jamCounter++;
-                        } else {
-                            // Reset jam counter if moving at decent speed
-                            vehicle.jamCounter = Math.max(0, vehicle.jamCounter - 2); // Faster recovery
-                        }
-                        vehicle.lastJamCheck = currentTime;
-                    }
-
-                    // Determine if in traffic jam
-                    const isInTrafficJam = vehicle.jamCounter > 5;
-
-                    // Get the actual distance to the next vehicle
-                    const hasCollisionEmergency = optimizedDetectCollisionAhead(vehicle, filteredVehicles, CIVILIAN_EMERGENCY_DISTANCE);
-                    const hasMinimumDistance = optimizedDetectCollisionAhead(vehicle, filteredVehicles, CIVILIAN_MINIMUM_DISTANCE);
-                    const hasCollisionWarning = optimizedDetectCollisionAhead(vehicle, filteredVehicles, CIVILIAN_DETECTION_DISTANCE);
-
-                    // Store the previous speed for acceleration control
-                    if (!vehicle.previousSpeed) vehicle.previousSpeed = vehicle.speed;
-
-                    // Determine appropriate speed for civilian vehicles with traffic jam recovery
-                    let targetSpeed;
-                    if (hasCollisionEmergency) {
-                        // Emergency stop - too close
-                        targetSpeed = 0;
-                    } else if (hasMinimumDistance) {
-                        // Strong slowing down when below minimum distance
-                        const distanceFactor = (vehicle.distanceToNext - CIVILIAN_EMERGENCY_DISTANCE) /
-                            (CIVILIAN_MINIMUM_DISTANCE - CIVILIAN_EMERGENCY_DISTANCE);
-                        targetSpeed = originalSpeed * Math.max(0.05, distanceFactor * 0.1);
-                    } else if (hasCollisionWarning) {
-                        // Gradual slow down based on distance
-                        const distanceFactor = (vehicle.distanceToNext - CIVILIAN_MINIMUM_DISTANCE) /
-                            (CIVILIAN_DETECTION_DISTANCE - CIVILIAN_MINIMUM_DISTANCE);
-                        targetSpeed = originalSpeed * Math.max(0.3, distanceFactor);
-                    } else {
-                        // No obstacles ahead - recover speed
-                        targetSpeed = originalSpeed;
-
-                        // Apply boost if recovering from traffic jam
-                        if (isInTrafficJam && vehicle.distanceToNext > CIVILIAN_MINIMUM_DISTANCE) {
-                            targetSpeed *= TRAFFIC_JAM_RECOVERY_BOOST;
-                        }
-                    }
-
-                    // Smooth acceleration/deceleration
-                    const accelerationRate = targetSpeed > vehicle.speed ? 0.1 : 0.2; // Faster deceleration
-                    speed = vehicle.speed + (targetSpeed - vehicle.speed) * accelerationRate;
-
-                    // Store current speed for next frame
-                    vehicle.previousSpeed = speed;
-                }
-
+                // Only run one collision detection - remove this redundant section
                 return {
                     ...vehicle,
                     position: tempVector3.clone(), // Need to clone here since we're returning a new object
@@ -1287,8 +1347,8 @@ export default function VehiclesOnRoad() {
                 // Check if column has reached the end of the road
                 const frontmostX = frontmostActiveVehicle.position.x + (newColumnSpeed * frontmostActiveVehicle.direction * delta * 60);
 
-                if (frontmostActiveVehicle.direction > 0 && frontmostX > TERRAIN_SIZE / 2 ||
-                    frontmostActiveVehicle.direction < 0 && frontmostX < -TERRAIN_SIZE / 2) {
+                if (frontmostActiveVehicle.direction > 0 && frontmostX > terrainSize.width / 2 ||
+                    frontmostActiveVehicle.direction < 0 && frontmostX < -terrainSize.width / 2) {
 
                     // Remove the column from the scene
                     columnVehicles.forEach((vehicle) => {
@@ -1323,10 +1383,10 @@ export default function VehiclesOnRoad() {
                     }
 
                     // For military columns, keep the existing respawn logic
-                    const randomOffset = Math.random() * (TERRAIN_SIZE * 0.4);
+                    const randomOffset = Math.random() * (terrainSize.width * 0.4);
                     const respawnPosition = vehicle.direction > 0 ?
-                        -TERRAIN_SIZE / 2 + randomOffset :
-                        TERRAIN_SIZE / 2 + randomOffset;
+                        -terrainSize.width / 2 + randomOffset :
+                        terrainSize.width / 2 + randomOffset;
 
                     const vehiclesAtStartingPoint = updatedVehicles.filter(v =>
                         v && v.id !== vehicle.id && // Add null check
@@ -1415,12 +1475,12 @@ export default function VehiclesOnRoad() {
 
         // Generate a random position along the road for the column to spawn
         // Use a range within the terrain size with some padding
-        const randomOffset = Math.random() * (TERRAIN_SIZE * 0.7) - (TERRAIN_SIZE * 0.35);
+        const randomOffset = Math.random() * (terrainSize.width * 0.7) - (terrainSize.width * 0.35);
 
         // Starting position for the new column - random point on the road
         const startingX = direction > 0 ?
-            -TERRAIN_SIZE / 2 + 100 + randomOffset : // For positive direction
-            TERRAIN_SIZE / 2 - 100 + randomOffset;  // For negative direction
+            -terrainSize.width / 2 + 100 + randomOffset : // For positive direction
+            terrainSize.width / 2 - 100 + randomOffset;  // For negative direction
 
         // Get road from lane position (extract Z coordinate)
         const roadZ = Math.abs(lane) < ROAD_WIDTH ? -ROAD_SPACING / 2 : ROAD_SPACING / 2;
@@ -1516,8 +1576,8 @@ export default function VehiclesOnRoad() {
             .filter((vehicle) => {
                 // Define the visible area boundary with a small buffer
                 const buffer = 50; // buffer in units beyond the terrain edge
-                const minX = -TERRAIN_SIZE / 2 - buffer;
-                const maxX = TERRAIN_SIZE / 2 + buffer;
+                const minX = -terrainSize.width / 2 - buffer;
+                const maxX = terrainSize.width / 2 + buffer;
 
                 // Define valid Z-coordinate range (road width)
                 const roadHalfWidth = ROAD_WIDTH / 2;
@@ -1567,9 +1627,9 @@ export default function VehiclesOnRoad() {
                             isInColumn: vehicle.isInColumn,
                             columnId: vehicle.columnId,
                             hitbox: {
-                                width: 4.0,
-                                height: 2.0,
-                                depth: 6.6
+                                width: vehicle.hitbox?.width || 1.0,
+                                height: vehicle.hitbox?.height || 1.0,
+                                depth: vehicle.hitbox?.depth || 3.0
                             }
                         }}
                         name={`vehicle-${vehicle.id}`}
@@ -1589,7 +1649,7 @@ export default function VehiclesOnRoad() {
                         {false && (
                             <mesh
                                 visible={true}
-                                position={[0, 0.5, 0]}
+                                position={[0, vehicle.hitbox?.height / 2 || 0.5, 0]}
                                 userData={{
                                     isVehicleHitbox: true,
                                     parentVehicleId: vehicle.id
@@ -1606,7 +1666,7 @@ export default function VehiclesOnRoad() {
                     </group>
                 );
             });
-    }, [vehicles, getVehicleHealth]);
+    }, [vehicles, getVehicleHealth, terrainSize]);
 
     return <>{renderVehicles}</>;
 }

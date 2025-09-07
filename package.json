@@ -26,24 +26,24 @@
     "license": "ISC",
     "dependencies": {
         "@react-three/cannon": "^6.6.0",
-        "@react-three/drei": "latest",
-        "@react-three/fiber": "latest",
+        "@react-three/drei": "^9.92.7",
+        "@react-three/fiber": "^8.15.13",
         "cannon-es": "^0.20.0",
         "file-saver": "^2.0.5",
         "oimo": "^1.0.9",
-        "react": "latest",
-        "react-dom": "latest",
-        "three": "latest",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "three": "^0.160.0",
         "uuid": "^9.0.1",
-        "zustand": "^5.0.3"
+        "zustand": "^4.4.7"
     },
     "devDependencies": {
-        "@vitejs/plugin-react": "latest",
+        "@vitejs/plugin-react": "^4.2.1",
         "eslint": "^8.56.0",
         "eslint-plugin-react": "^7.33.2",
         "eslint-plugin-react-hooks": "^4.6.0",
         "terser": "^5.39.0",
-        "vite": "latest",
+        "vite": "^5.0.11",
         "vite-bundle-visualizer": "^0.11.0",
         "vitest": "^1.2.1"
     },

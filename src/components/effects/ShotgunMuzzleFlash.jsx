@@ -5,10 +5,10 @@ import * as THREE from 'three';
 /**
  * A dedicated component for shotgun muzzle flash effects
  * This replaces the explosion effect for shotguns with a more appropriate
- * muzzle flash visualization
+ * muzzle flash visualization - optimized for performance
  */
-export default function ShotgunMuzzleFlash({ position, direction, onComplete }) {
-    const [life, setLife] = useState(10); // Short lifetime
+export default function ShotgunMuzzleFlash({ position, direction, onComplete, isImpact }) {
+    const [life, setLife] = useState(isImpact ? 5 : 8); // Shorter lifetime, even shorter for impacts
     const flashRef = useRef();
     const particlesRef = useRef([]);
 
@@ -19,10 +19,16 @@ export default function ShotgunMuzzleFlash({ position, direction, onComplete }) 
 
         // Get current FPS for adaptive particle count
         const currentFps = window.currentFps || 60;
-        const particleCountMultiplier = currentFps < 40 ? 0.5 : (currentFps < 50 ? 0.7 : 1.0);
+        // Much more aggressive FPS-based particle reduction
+        const particleCountMultiplier = currentFps < 30 ? 0.2 :
+            (currentFps < 40 ? 0.4 :
+                (currentFps < 50 ? 0.6 : 0.8));
+
+        // For impact effects, use fewer particles
+        const impactMultiplier = isImpact ? 0.5 : 1.0;
 
         // Create cone flash - reduce particle count based on FPS
-        const particleCount = Math.floor(10 * particleCountMultiplier); // Reduced from 15 to 10 base particles
+        const particleCount = Math.max(1, Math.floor(6 * particleCountMultiplier * impactMultiplier)); // Significantly reduced base particles
         for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.random() * 0.3;
@@ -43,39 +49,42 @@ export default function ShotgunMuzzleFlash({ position, direction, onComplete }) 
             });
         }
 
-        // Add some small pellet particles - reduce count based on FPS
-        const pelletCount = Math.floor(6 * particleCountMultiplier); // Reduced from 8 to 6 base particles
-        for (let i = 0; i < pelletCount; i++) {
-            const spread = Math.random() * 0.2;
-            const distance = 0.5 + Math.random() * 1.0;
-            const angle = Math.random() * Math.PI * 2;
+        // Only add pellet particles if FPS is high enough and not an impact effect
+        if (currentFps > 40 && !isImpact) {
+            // Add some small pellet particles - significantly reduce count
+            const pelletCount = Math.max(1, Math.floor(3 * particleCountMultiplier)); // Drastically reduced from 6 to 3 base particles
+            for (let i = 0; i < pelletCount; i++) {
+                const spread = Math.random() * 0.2;
+                const distance = 0.5 + Math.random() * 1.0;
+                const angle = Math.random() * Math.PI * 2;
 
-            particles.push({
-                position: new THREE.Vector3(
-                    Math.cos(angle) * spread,
-                    Math.sin(angle) * spread,
-                    -distance
-                ),
-                size: 0.03 + Math.random() * 0.05,
-                opacity: 0.5 + Math.random() * 0.3,
-                color: new THREE.Color(0.8, 0.8, 0.8) // Pellet color
-            });
+                particles.push({
+                    position: new THREE.Vector3(
+                        Math.cos(angle) * spread,
+                        Math.sin(angle) * spread,
+                        -distance
+                    ),
+                    size: 0.03 + Math.random() * 0.05,
+                    opacity: 0.5 + Math.random() * 0.3,
+                    color: new THREE.Color(0.8, 0.8, 0.8) // Pellet color
+                });
+            }
         }
 
         particlesRef.current = particles;
 
-        // Auto-cleanup
+        // Auto-cleanup - shorter duration for better performance
+        const duration = isImpact ? 100 : 150; // Very short duration, even shorter for impacts
         const timer = setTimeout(() => {
             if (onComplete) onComplete();
-        }, 200); // Short duration
+        }, duration);
 
         return () => clearTimeout(timer);
-    }, [onComplete]);
+    }, [onComplete, isImpact]);
 
     // Animation frame handling
     useFrame(() => {
         if (life <= 0) return;
-
         setLife(prev => prev - 1);
     });
 
@@ -98,7 +107,40 @@ export default function ShotgunMuzzleFlash({ position, direction, onComplete }) 
     if (life <= 0) return null;
 
     // Scale opacity with life
-    const opacity = life / 10;
+    const opacity = life / (isImpact ? 5 : 8);
+
+    // For very low FPS, use a simplified representation
+    const currentFps = window.currentFps || 60;
+    const useSimplifiedVersion = currentFps < 30;
+
+    if (useSimplifiedVersion) {
+        // Extremely simplified version for low FPS
+        return (
+            <group
+                ref={flashRef}
+                position={[position.x, position.y, position.z]}
+                rotation={rotation}
+            >
+                {/* Single center flash */}
+                <mesh>
+                    <sphereGeometry args={[0.2, 6, 6]} />
+                    <meshBasicMaterial
+                        color={0xffdd88}
+                        transparent={true}
+                        opacity={opacity * 0.8}
+                    />
+                </mesh>
+
+                {/* Light source with reduced intensity */}
+                <pointLight
+                    color={0xffdd88}
+                    intensity={4 * opacity}
+                    distance={2}
+                    decay={2}
+                />
+            </group>
+        );
+    }
 
     return (
         <group
@@ -108,7 +150,7 @@ export default function ShotgunMuzzleFlash({ position, direction, onComplete }) 
         >
             {/* Center flash */}
             <mesh>
-                <sphereGeometry args={[0.2, 8, 8]} />
+                <sphereGeometry args={[0.2, 6, 6]} /> {/* Reduced geometry detail */}
                 <meshBasicMaterial
                     color={0xffdd88}
                     transparent={true}
@@ -116,20 +158,22 @@ export default function ShotgunMuzzleFlash({ position, direction, onComplete }) 
                 />
             </mesh>
 
-            {/* Cone flash */}
-            <mesh position={[0, 0, -0.1]}>
-                <coneGeometry args={[0.3, 0.6, 8]} />
-                <meshBasicMaterial
-                    color={0xffffaa}
-                    transparent={true}
-                    opacity={opacity * 0.6}
-                />
-            </mesh>
+            {/* Cone flash - only if not impact */}
+            {!isImpact && (
+                <mesh position={[0, 0, -0.1]}>
+                    <coneGeometry args={[0.3, 0.6, 6]} /> {/* Reduced geometry detail */}
+                    <meshBasicMaterial
+                        color={0xffffaa}
+                        transparent={true}
+                        opacity={opacity * 0.6}
+                    />
+                </mesh>
+            )}
 
-            {/* Particles */}
+            {/* Particles - limit the number rendered based on FPS */}
             {particlesRef.current.map((particle, i) => (
                 <mesh key={i} position={particle.position.toArray()}>
-                    <sphereGeometry args={[particle.size, 6, 6]} />
+                    <sphereGeometry args={[particle.size, 4, 4]} /> {/* Reduced geometry detail */}
                     <meshBasicMaterial
                         color={particle.color}
                         transparent={true}
@@ -138,11 +182,11 @@ export default function ShotgunMuzzleFlash({ position, direction, onComplete }) 
                 </mesh>
             ))}
 
-            {/* Light source */}
+            {/* Light source with conditional intensity */}
             <pointLight
                 color={0xffdd88}
-                intensity={6 * opacity}
-                distance={3}
+                intensity={isImpact ? 3 * opacity : 5 * opacity}
+                distance={isImpact ? 2 : 3}
                 decay={2}
             />
         </group>

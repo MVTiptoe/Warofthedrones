@@ -1,6 +1,6 @@
 import React from 'react';
 import './ControlsList.css';
-import { useDrones, DRONE_TYPES } from '../../utils/DronesContext';
+import { useDrones, DRONE_TYPES } from '../../utils/GameContext';
 
 export default function ControlsList() {
     const { currentDrone } = useDrones();

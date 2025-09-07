@@ -3,6 +3,11 @@ import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 
+// Global setting to control whether damage indicators are displayed
+export const damageIndicatorSettings = {
+    showDamageNumbers: false // Set to false to disable damage numbers by default
+};
+
 export default function DamageIndicator({ position, damage = 0, duration = 60 }) {
     const groupRef = useRef();
     const [lifespan, setLifespan] = useState(duration);
@@ -67,6 +72,9 @@ export function DamageIndicatorsManager() {
     // Set up event listener for damage events
     React.useEffect(() => {
         const handleDamage = (event) => {
+            // If damage numbers are disabled, don't add new indicators
+            if (!damageIndicatorSettings.showDamageNumbers) return;
+
             const { position, damage } = event.detail;
 
             // Add new damage indicator
@@ -97,6 +105,9 @@ export function DamageIndicatorsManager() {
         };
     }, []);
 
+    // If damage indicators are disabled, don't render anything
+    if (!damageIndicatorSettings.showDamageNumbers) return null;
+
     return (
         <>
             {indicators.map(indicator => (
@@ -112,6 +123,9 @@ export function DamageIndicatorsManager() {
 
 // Helper function to trigger a damage indicator
 export function showDamageIndicator(position, damage) {
+    // If damage numbers are disabled, don't show anything
+    if (!damageIndicatorSettings.showDamageNumbers) return;
+
     // Ensure damage is a number with a default value of 0
     const damageValue = typeof damage === 'number' ? damage : 0;
 

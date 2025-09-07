@@ -10,6 +10,11 @@ export default function ExplosionsManager() {
     const objectsCacheRef = useRef(new Map()); // Cache for scene objects to avoid re-traversing scene
     const explosionTimestampsRef = useRef(new Map()); // Store creation timestamps for safety cleanup
 
+    // Refs for shotgun optimizations - moved outside useEffect
+    const lastShotgunProcessTimeRef = useRef(0);
+    const objectsCacheForShotgunRef = useRef(new Map());
+    const SHOTGUN_THROTTLE_MS = 50; // Only process shotgun effects every 50ms
+
     // Update object cache when scene changes
     useEffect(() => {
         // Function to update the object cache
@@ -48,19 +53,66 @@ export default function ExplosionsManager() {
 
     // Set up a custom event listener for creating explosions
     useEffect(() => {
+        // Using refs that were moved to component scope
         const handleExplosion = (event) => {
             const { position, weaponType } = event.detail;
 
             // Skip adding explosion animation for shotgun
             if (weaponType === WEAPON_TYPES.SHOTGUN) {
+                // Apply throttling for shotgun events
+                const now = Date.now();
+                if (now - lastShotgunProcessTimeRef.current < SHOTGUN_THROTTLE_MS) {
+                    // Skip this shotgun event due to throttling
+                    return;
+                }
+                lastShotgunProcessTimeRef.current = now;
+
+                // Check if FPS is extremely low - if so, simplify further
+                const currentFps = window.currentFps || 60;
+                if (currentFps < 20) {
+                    // At extremely low FPS, we'll only process every other shotgun event
+                    if (Math.random() > 0.5) return;
+                }
+
                 // Only apply damage for shotgun without visual explosion effect
-                const damageRadius = DAMAGE_PROFILES[weaponType].outerRadius * 2; // Doubled for better hit detection
-                const objectsInRange = findObjectsInRadius(position, damageRadius);
+                const damageRadius = DAMAGE_PROFILES[weaponType].outerRadius * 1.5; // Reduced from 2.0 for performance
+
+                // Use cached objects for performance if available
+                const cacheKey = `${Math.floor(position.x)},${Math.floor(position.y)},${Math.floor(position.z)}`;
+                let objectsInRange = [];
+
+                // Check if we have a recent cached result for a similar position
+                if (objectsCacheForShotgunRef.current.has(cacheKey) &&
+                    now - objectsCacheForShotgunRef.current.get(cacheKey).timestamp < 200) {
+                    objectsInRange = objectsCacheForShotgunRef.current.get(cacheKey).objects;
+                } else {
+                    // If no cache hit, find objects normally
+                    objectsInRange = findObjectsInRadius(position, damageRadius);
+
+                    // Cache the result
+                    objectsCacheForShotgunRef.current.set(cacheKey, {
+                        objects: objectsInRange,
+                        timestamp: now
+                    });
+
+                    // Limit cache size to prevent memory issues
+                    if (objectsCacheForShotgunRef.current.size > 20) {
+                        const oldestKey = Array.from(objectsCacheForShotgunRef.current.keys())[0];
+                        objectsCacheForShotgunRef.current.delete(oldestKey);
+                    }
+                }
 
                 if (objectsInRange.length > 0) {
-                    requestAnimationFrame(() => {
-                        applyExplosionDamage(weaponType, position, objectsInRange);
-                    });
+                    // Use requestIdleCallback if available for non-critical processing
+                    if (window.requestIdleCallback) {
+                        window.requestIdleCallback(() => {
+                            applyExplosionDamage(weaponType, position, objectsInRange);
+                        });
+                    } else {
+                        requestAnimationFrame(() => {
+                            applyExplosionDamage(weaponType, position, objectsInRange);
+                        });
+                    }
                 }
                 return;
             }

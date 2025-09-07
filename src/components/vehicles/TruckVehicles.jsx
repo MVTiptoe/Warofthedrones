@@ -24,48 +24,53 @@ const SHARED_MATERIALS = {
 /* Civilian Truck 1 – A simplified two-part truck with a cab and trailer */
 export const CivilianTruck1 = (props) => (
   <group {...props}>
-    {/* Simplified truck cab */}
-    <group position={[0, 0.7, -2.5]}>
+    {/* Cab */}
+    <group position={[0, 0.75, -2.2]}>
       <mesh>
-        <boxGeometry args={[2.2, 1.2, 1.8]} />
+        <boxGeometry args={[2, 1.3, 1.8]} />
         <meshStandardMaterial color="#778899" />
       </mesh>
-      {/* Simple windshield - fixed material reference */}
-      <mesh position={[0, 0.2, -0.9]}>
-        <boxGeometry args={[1.8, 0.5, 0.1]} />
+      {/* Windshield */}
+      <mesh position={[0, 0.3, -0.9]}>
+        <boxGeometry args={[1.6, 0.4, 0.1]} />
         <meshStandardMaterial {...SHARED_MATERIALS.windshield} />
       </mesh>
-      {/* Basic front lights */}
-      <mesh position={[0, -0.2, -0.95]}>
-        <boxGeometry args={[1.4, 0.2, 0.05]} />
+      {/* Headlights */}
+      <mesh position={[0, -0.3, -0.95]}>
+        <boxGeometry args={[1.2, 0.2, 0.05]} />
         <meshStandardMaterial {...SHARED_MATERIALS.headlight} />
       </mesh>
     </group>
-    {/* Basic trailer */}
-    <group position={[0, 0.7, 1]}>
+    {/* Cargo area */}
+    <group position={[0, 0.85, 0.8]}>
       <mesh>
-        <boxGeometry args={[2.4, 1.5, 3.6]} />
+        <boxGeometry args={[2.2, 1.5, 3.8]} />
         <meshStandardMaterial color="#A9A9A9" />
       </mesh>
+      {/* Decorative stripe */}
+      <mesh position={[0, -0.4, 0]}>
+        <boxGeometry args={[2.25, 0.1, 3.85]} />
+        <meshStandardMaterial color="#CBD5E0" /> {/* Light gray */}
+      </mesh>
     </group>
-    {/* Simple wheels - properly aligned with vehicle dimensions */}
+    {/* Wheels - thinner width */}
     {[
-      { pos: [-0.9, 0.3, -2.5] },
-      { pos: [0.9, 0.3, -2.5] },
-      { pos: [-0.9, 0.3, 0.3] },
-      { pos: [0.9, 0.3, 0.3] },
-      { pos: [-0.9, 0.3, 2.2] },
-      { pos: [0.9, 0.3, 2.2] }
+      { pos: [-1.0, 0.4, -2.2] },
+      { pos: [1.0, 0.4, -2.2] },
+      { pos: [-1.1, 0.4, 0.6] },
+      { pos: [1.1, 0.4, 0.6] },
+      { pos: [-1.1, 0.4, 2] },
+      { pos: [1.1, 0.4, 2] }
     ].map((wheel, i) => (
-      <mesh key={i} position={wheel.pos} name="wheels">
-        <cylinderGeometry args={[0.45, 0.45, 0.3, 8]} />
+      <mesh key={i} position={wheel.pos} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.4, 0.4, 0.22, 8]} />
         <meshStandardMaterial color="#222" />
       </mesh>
     ))}
 
-    {/* Named mesh for hit detection - helps with proper hitbox calculation */}
+    {/* Named mesh for hit detection */}
     <mesh position={[0, 0, 0]} visible={false} name="body">
-      <boxGeometry args={[2.3, 1.4, 6.2]} />
+      <boxGeometry args={[2.2, 1.5, 5.0]} />
       <meshStandardMaterial color="red" wireframe opacity={0.1} transparent />
     </mesh>
   </group>
@@ -74,116 +79,110 @@ export const CivilianTruck1 = (props) => (
 /* Civilian Truck 2 – A simplified modern truck with integrated design */
 export const CivilianTruck2 = (props) => (
   <group {...props}>
-    {/* Basic cab */}
+    {/* Cab */}
     <group position={[0, 0.75, -2.2]}>
       <mesh>
         <boxGeometry args={[2, 1.3, 1.8]} />
         <meshStandardMaterial color="#708090" />
       </mesh>
-      {/* Simple windshield */}
+      {/* Windshield */}
       <mesh position={[0, 0.3, -0.9]}>
         <boxGeometry args={[1.6, 0.4, 0.1]} />
-        <meshStandardMaterial color="#87CEEB" transparent={true} opacity={0.7} />
+        <meshStandardMaterial {...SHARED_MATERIALS.windshield} />
       </mesh>
-      {/* Basic headlights */}
+      {/* Headlights */}
       <mesh position={[0, -0.3, -0.95]}>
         <boxGeometry args={[1.2, 0.2, 0.05]} />
-        <meshStandardMaterial color="#FFFFFF" emissive="#FFFFCC" emissiveIntensity={0.5} />
+        <meshStandardMaterial {...SHARED_MATERIALS.headlight} />
       </mesh>
     </group>
-    {/* Simple cargo area */}
+    {/* Cargo area */}
     <group position={[0, 0.85, 0.8]}>
       <mesh>
         <boxGeometry args={[2.2, 1.5, 3.8]} />
         <meshStandardMaterial color="#696969" />
       </mesh>
+      {/* Decorative stripe */}
+      <mesh position={[0, -0.4, 0]}>
+        <boxGeometry args={[2.25, 0.1, 3.85]} />
+        <meshStandardMaterial color="#CBD5E0" /> {/* Light gray */}
+      </mesh>
     </group>
-    {/* Basic wheels */}
+    {/* Wheels - thinner width */}
     {[
-      { pos: [-0.8, 0.3, -2.2] },
-      { pos: [0.8, 0.3, -2.2] },
-      { pos: [-0.8, 0.3, 0.6] },
-      { pos: [0.8, 0.3, 0.6] },
-      { pos: [-0.8, 0.3, 2] },
-      { pos: [0.8, 0.3, 2] }
+      { pos: [-1.0, 0.4, -2.2] },
+      { pos: [1.0, 0.4, -2.2] },
+      { pos: [-1.1, 0.4, 0.6] },
+      { pos: [1.1, 0.4, 0.6] },
+      { pos: [-1.1, 0.4, 2] },
+      { pos: [1.1, 0.4, 2] }
     ].map((wheel, i) => (
-      <mesh key={i} position={wheel.pos}>
-        <cylinderGeometry args={[0.4, 0.4, 0.3, 8]} />
+      <mesh key={i} position={wheel.pos} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.4, 0.4, 0.22, 8]} />
         <meshStandardMaterial color="#222" />
       </mesh>
     ))}
+
+    {/* Named mesh for hit detection */}
+    <mesh position={[0, 0, 0]} visible={false} name="body">
+      <boxGeometry args={[2.2, 1.5, 5.0]} />
+      <meshStandardMaterial color="red" wireframe opacity={0.1} transparent />
+    </mesh>
   </group>
 );
 
-/* Civilian Truck 3 – A retro design featuring a boxy cab and a spacious trailer with accent details */
+/* Civilian Truck 3 – A design similar to Truck 2 but with different colors */
 export const CivilianTruck3 = (props) => (
   <group {...props}>
-    {/* Boxy cab with decorative side stripe */}
-    <group position={[0, 0.65, -2.3]}>
+    {/* Cab */}
+    <group position={[0, 0.75, -2.2]}>
       <mesh>
-        <boxGeometry args={[2.2, 1.1, 1.7]} />
-        <meshStandardMaterial color="#228B22" />
+        <boxGeometry args={[2, 1.3, 1.8]} />
+        <meshStandardMaterial color="#7D7D7D" /> {/* Lighter grey */}
       </mesh>
-      <mesh position={[0, 0.4, -0.85]}>
-        <boxGeometry args={[1.8, 0.2, 0.1]} />
-        <meshStandardMaterial color="#ADFF2F" />
+      {/* Windshield */}
+      <mesh position={[0, 0.3, -0.9]}>
+        <boxGeometry args={[1.6, 0.4, 0.1]} />
+        <meshStandardMaterial {...SHARED_MATERIALS.windshield} />
       </mesh>
-      {/* Vintage-style radiator grille */}
-      <mesh position={[0, 0, -0.9]}>
-        <boxGeometry args={[1.6, 0.6, 0.1]} />
-        <meshStandardMaterial color="#111" />
+      {/* Headlights */}
+      <mesh position={[0, -0.3, -0.95]}>
+        <boxGeometry args={[1.2, 0.2, 0.05]} />
+        <meshStandardMaterial {...SHARED_MATERIALS.headlight} />
       </mesh>
-      {/* Chrome bumper */}
-      <mesh position={[0, -0.4, -0.9]}>
-        <boxGeometry args={[1.8, 0.2, 0.2]} />
-        <meshStandardMaterial color="#C0C0C0" metalness={0.8} roughness={0.2} />
-      </mesh>
-      {/* Round headlights */}
-      {[-0.6, 0.6].map((x, i) => (
-        <mesh key={`retro-hl-${i}`} position={[x, 0.1, -0.95]}>
-          <cylinderGeometry args={[0.2, 0.2, 0.1, 8]} rotation={[Math.PI / 2, 0, 0]} />
-          <meshStandardMaterial color="#FFFACD" emissive="#FFFF66" />
-        </mesh>
-      ))}
     </group>
-    {/* Large trailer with panel lines */}
-    <group position={[0, 0.65, 0.8]}>
+    {/* Cargo area */}
+    <group position={[0, 0.85, 0.8]}>
       <mesh>
-        <boxGeometry args={[2.4, 1.1, 3.8]} />
-        <meshStandardMaterial color="#90EE90" />
+        <boxGeometry args={[2.2, 1.5, 3.8]} />
+        <meshStandardMaterial color="#2C5282" /> {/* Darker blue */}
       </mesh>
-      <mesh position={[0, 0.75, 0]}>
-        <boxGeometry args={[2.2, 0.3, 3.6]} />
-        <meshStandardMaterial color="#ccc" />
+      {/* Decorative stripe */}
+      <mesh position={[0, -0.4, 0]}>
+        <boxGeometry args={[2.25, 0.1, 3.85]} />
+        <meshStandardMaterial color="#CBD5E0" /> {/* Light gray */}
       </mesh>
-      {/* Side panel details */}
-      {[-1.2, -0.4, 0.4, 1.2, 2].map((z, i) => (
-        <mesh key={`panel-${i}`} position={[-1.2, 0, z]}>
-          <boxGeometry args={[0.05, 0.8, 0.1]} />
-          <meshStandardMaterial color="#228B22" />
-        </mesh>
-      ))}
-      {[-1.2, -0.4, 0.4, 1.2, 2].map((z, i) => (
-        <mesh key={`panel2-${i}`} position={[1.2, 0, z]}>
-          <boxGeometry args={[0.05, 0.8, 0.1]} />
-          <meshStandardMaterial color="#228B22" />
-        </mesh>
-      ))}
     </group>
-    {/* Wheels */}
+    {/* Wheels - thinner width */}
     {[
-      { pos: [-0.9, 0.3, -2.3] },
-      { pos: [0.9, 0.3, -2.3] },
-      { pos: [-0.9, 0.3, 0] },
-      { pos: [0.9, 0.3, 0] },
-      { pos: [-0.9, 0.3, 1.8] },
-      { pos: [0.9, 0.3, 1.8] }
+      { pos: [-1.0, 0.4, -2.2] },
+      { pos: [1.0, 0.4, -2.2] },
+      { pos: [-1.1, 0.4, 0.6] },
+      { pos: [1.1, 0.4, 0.6] },
+      { pos: [-1.1, 0.4, 2] },
+      { pos: [1.1, 0.4, 2] }
     ].map((wheel, i) => (
-      <mesh key={i} position={wheel.pos}>
-        <cylinderGeometry args={[0.45, 0.45, 0.35, 8]} />
+      <mesh key={i} position={wheel.pos} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.4, 0.4, 0.22, 8]} />
         <meshStandardMaterial color="#222" />
       </mesh>
     ))}
+
+    {/* Named mesh for hit detection */}
+    <mesh position={[0, 0, 0]} visible={false} name="body">
+      <boxGeometry args={[2.2, 1.5, 5.0]} />
+      <meshStandardMaterial color="red" wireframe opacity={0.1} transparent />
+    </mesh>
   </group>
 );
 
@@ -192,64 +191,55 @@ export const CivilianTruck3 = (props) => (
 /* Military Truck 1 – A heavily armored truck with reinforced plating and visible mechanical details */
 export const MilitaryTruck1 = (props) => (
   <group {...props}>
-    {/* Cab section */}
-    <mesh position={[0, 0.7, -2]}>
-      <boxGeometry args={[2.4, 1.5, 1.8]} />
+    {/* Cab section - raised slightly */}
+    <mesh position={[0, 0.8, -2]}>
+      <boxGeometry args={[1.8, 1.4, 1.8]} />
       <meshStandardMaterial color="#556B2F" />
     </mesh>
-    {/* Main cargo/troop section */}
-    <mesh position={[0, 0.7, 0.8]}>
-      <boxGeometry args={[2.4, 1.5, 3.6]} />
+    {/* Main cargo/troop section - raised slightly */}
+    <mesh position={[0, 0.8, 0.8]}>
+      <boxGeometry args={[1.8, 1.4, 3.6]} />
       <meshStandardMaterial color="#556B2F" />
     </mesh>
-    {/* Additional armor layer */}
-    <mesh position={[0, 1.25, -2]}>
-      <boxGeometry args={[2.5, 0.3, 1.9]} />
+    {/* Additional armor layer - fixed position to prevent z-fighting */}
+    <mesh position={[0, 1.51, -2]}>
+      <boxGeometry args={[1.7, 0.25, 1.7]} />
       <meshStandardMaterial color="#6B8E23" />
     </mesh>
-    <mesh position={[0, 1.25, 0.8]}>
-      <boxGeometry args={[2.5, 0.3, 3.7]} />
+    <mesh position={[0, 1.51, 0.8]}>
+      <boxGeometry args={[1.7, 0.25, 3.5]} />
       <meshStandardMaterial color="#6B8E23" />
     </mesh>
-    {/* Cab details */}
-    <mesh position={[0, 1.3, -1.8]}>
-      <boxGeometry args={[1.8, 0.8, 1.2]} />
-      <meshStandardMaterial color="#8B4513" />
-    </mesh>
-    {/* Front armor plating */}
-    <mesh position={[0, 0.7, -2.95]}>
-      <boxGeometry args={[2.3, 1.2, 0.1]} />
-      <meshStandardMaterial color="#4d5d28" />
-    </mesh>
-    {/* Side armor panels */}
-    <mesh position={[-1.25, 0.7, -2]}>
+
+    {/* Side armor panels - raised slightly */}
+    <mesh position={[-1.0, 0.8, -2]}>
       <boxGeometry args={[0.15, 1.2, 1.8]} />
       <meshStandardMaterial color="#4d5d28" />
     </mesh>
-    <mesh position={[1.25, 0.7, -2]}>
+    <mesh position={[1.0, 0.8, -2]}>
       <boxGeometry args={[0.15, 1.2, 1.8]} />
       <meshStandardMaterial color="#4d5d28" />
     </mesh>
-    <mesh position={[-1.25, 0.7, 0.8]}>
+    <mesh position={[-1.0, 0.8, 0.8]}>
       <boxGeometry args={[0.15, 1.2, 3.6]} />
       <meshStandardMaterial color="#4d5d28" />
     </mesh>
-    <mesh position={[1.25, 0.7, 0.8]}>
+    <mesh position={[1.0, 0.8, 0.8]}>
       <boxGeometry args={[0.15, 1.2, 3.6]} />
       <meshStandardMaterial color="#4d5d28" />
     </mesh>
 
-    {/* Wheels */}
+    {/* Smaller wheels - keeping the same height */}
     {[
-      { pos: [-1, 0.2, -2] },
-      { pos: [1, 0.2, -2] },
-      { pos: [-1, 0.2, 0] },
-      { pos: [1, 0.2, 0] },
-      { pos: [-1, 0.2, 1.6] },
-      { pos: [1, 0.2, 1.6] },
+      { pos: [-0.9, 0.4, -2] },
+      { pos: [0.9, 0.4, -2] },
+      { pos: [-0.9, 0.4, 0] },
+      { pos: [0.9, 0.4, 0] },
+      { pos: [-0.9, 0.4, 1.6] },
+      { pos: [0.9, 0.4, 1.6] },
     ].map((wheel, i) => (
-      <mesh key={i} position={wheel.pos}>
-        <cylinderGeometry args={[0.5, 0.5, 0.3, 8]} />
+      <mesh key={i} position={wheel.pos} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.35, 0.35, 0.25, 8]} />
         <meshStandardMaterial color="#222" />
       </mesh>
     ))}
@@ -259,58 +249,68 @@ export const MilitaryTruck1 = (props) => (
 /* Military Truck 2 – A simplified rugged design with less detail */
 export const MilitaryTruck2 = (props) => (
   <group {...props}>
-    {/* Cab section */}
-    <mesh position={[0, 0.6, -2.2]}>
-      <boxGeometry args={[2.6, 1.3, 1.9]} />
+    {/* Cab section - raised slightly */}
+    <mesh position={[0, 0.7, -2.2]}>
+      <boxGeometry args={[1.8, 1.2, 1.9]} />
       <meshStandardMaterial color="#4B5320" /> {/* Olive drab */}
     </mesh>
-    {/* Main cargo/troop section */}
-    <mesh position={[0, 0.6, 0.9]}>
-      <boxGeometry args={[2.6, 1.3, 3.8]} />
+    {/* Main cargo/troop section - raised slightly */}
+    <mesh position={[0, 0.7, 0.9]}>
+      <boxGeometry args={[1.8, 1.2, 3.8]} />
       <meshStandardMaterial color="#4B5320" /> {/* Olive drab */}
     </mesh>
-    {/* Armor plating overlay */}
-    <mesh position={[0, 1.3, -2.2]}>
-      <boxGeometry args={[2.7, 0.3, 2]} />
+
+    {/* Armor plating overlay - raised slightly */}
+    <mesh position={[0, 1.4, -2.2]}>
+      <boxGeometry args={[1.9, 0.3, 2]} />
       <meshStandardMaterial color="#5E6142" /> {/* Darker olive */}
     </mesh>
-    <mesh position={[0, 1.3, 0.9]}>
-      <boxGeometry args={[2.7, 0.3, 3.9]} />
+    <mesh position={[0, 1.4, 0.9]}>
+      <boxGeometry args={[1.9, 0.3, 3.9]} />
       <meshStandardMaterial color="#5E6142" /> {/* Darker olive */}
     </mesh>
-    {/* Reinforced bumper */}
-    <mesh position={[0, 0.4, -3.2]}>
-      <boxGeometry args={[2.5, 0.6, 0.2]} />
+    {/* Reinforced bumper - raised slightly */}
+    <mesh position={[0, 0.5, -3.2]}>
+      <boxGeometry args={[1.9, 0.6, 0.2]} />
       <meshStandardMaterial color="#3A3A3A" /> {/* Dark gunmetal */}
     </mesh>
-    {/* Simplified side-mounted equipment */}
-    <mesh position={[-1.4, 0.7, -2.2]}>
+    {/* Simplified side-mounted equipment - raised slightly */}
+    <mesh position={[-1.0, 0.8, -2.2]}>
       <boxGeometry args={[0.2, 0.4, 1.8]} />
       <meshStandardMaterial color="#3D3D29" /> {/* Dark khaki */}
     </mesh>
-    <mesh position={[1.4, 0.7, -2.2]}>
+    <mesh position={[1.0, 0.8, -2.2]}>
       <boxGeometry args={[0.2, 0.4, 1.8]} />
       <meshStandardMaterial color="#3D3D29" /> {/* Dark khaki */}
     </mesh>
-    <mesh position={[-1.4, 0.7, 0.9]}>
+    <mesh position={[-1.0, 0.8, 0.9]}>
       <boxGeometry args={[0.2, 0.4, 3.6]} />
       <meshStandardMaterial color="#3D3D29" /> {/* Dark khaki */}
     </mesh>
-    <mesh position={[1.4, 0.7, 0.9]}>
+    <mesh position={[1.0, 0.8, 0.9]}>
       <boxGeometry args={[0.2, 0.4, 3.6]} />
       <meshStandardMaterial color="#3D3D29" /> {/* Dark khaki */}
     </mesh>
-    {/* Wheels */}
+
+    {/* Front wheels - smaller - keeping the same height */}
     {[
-      { pos: [-1.1, 0.2, -2.2] },
-      { pos: [1.1, 0.2, -2.2] },
-      { pos: [-1.1, 0.2, 0] },
-      { pos: [1.1, 0.2, 0] },
-      { pos: [-1.1, 0.2, 1.8] },
-      { pos: [1.1, 0.2, 1.8] }
+      { pos: [-0.9, 0.4, -2.2] },
+      { pos: [0.9, 0.4, -2.2] }
     ].map((wheel, i) => (
-      <mesh key={i} position={wheel.pos}>
-        <cylinderGeometry args={[0.55, 0.55, 0.35, 8]} />
+      <mesh key={i} position={wheel.pos} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.36, 0.36, 0.25, 8]} />
+        <meshStandardMaterial color="#222" />
+      </mesh>
+    ))}
+    {/* Rear wheels - dual wheel setup - smaller - keeping the same height */}
+    {[
+      { pos: [-0.9, 0.4, 0.6] },
+      { pos: [0.9, 0.4, 0.6] },
+      { pos: [-0.9, 0.4, 2] },
+      { pos: [0.9, 0.4, 2] }
+    ].map((wheel, i) => (
+      <mesh key={i + 2} position={wheel.pos} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.36, 0.36, 0.25, 8]} />
         <meshStandardMaterial color="#222" />
       </mesh>
     ))}
@@ -320,72 +320,71 @@ export const MilitaryTruck2 = (props) => (
 /* Military Truck 3 – A tactical truck with a reinforced top and additional equipment mounts */
 export const MilitaryTruck3 = (props) => (
   <group {...props}>
-    {/* Cab section */}
-    <mesh position={[0, 0.65, -2]}>
-      <boxGeometry args={[2.4, 1.2, 1.8]} />
+    {/* Cab section - raised slightly */}
+    <mesh position={[0, 0.75, -2]}>
+      <boxGeometry args={[1.8, 1.1, 1.8]} />
       <meshStandardMaterial color="#5D5D3C" /> {/* Military tan/olive */}
     </mesh>
-    {/* Cargo/troop section */}
-    <mesh position={[0, 0.65, 0.8]}>
-      <boxGeometry args={[2.4, 1.2, 3.6]} />
+    {/* Cargo/troop section - raised slightly */}
+    <mesh position={[0, 0.75, 0.8]}>
+      <boxGeometry args={[1.8, 1.1, 3.6]} />
       <meshStandardMaterial color="#5D5D3C" /> {/* Military tan/olive */}
     </mesh>
-    {/* Reinforced roof */}
-    <mesh position={[0, 1.35, -2]}>
-      <boxGeometry args={[2.5, 0.3, 1.9]} />
+    {/* Reinforced roof - raised slightly */}
+    <mesh position={[0, 1.45, -2]}>
+      <boxGeometry args={[1.9, 0.3, 1.9]} />
       <meshStandardMaterial color="#6E7B58" /> {/* Lighter olive */}
     </mesh>
-    <mesh position={[0, 1.35, 0.8]}>
-      <boxGeometry args={[2.5, 0.3, 3.7]} />
+    <mesh position={[0, 1.45, 0.8]}>
+      <boxGeometry args={[1.9, 0.3, 3.7]} />
       <meshStandardMaterial color="#6E7B58" /> {/* Lighter olive */}
-    </mesh>
-    {/* Equipment rack */}
-    <mesh position={[0, 1.55, -1.5]}>
-      <boxGeometry args={[1.2, 0.3, 1.4]} />
-      <meshStandardMaterial color="#4A4A3A" /> {/* Dark olive */}
     </mesh>
 
-    {/* Armored windshield */}
-    <mesh position={[0, 1, -2.7]} rotation={[0.2, 0, 0]}>
-      <boxGeometry args={[2, 0.6, 0.2]} />
-      <meshStandardMaterial color="#424236" /> {/* Dark military green */}
-    </mesh>
-    {/* Side storage boxes */}
-    <mesh position={[-1.3, 0.6, -2]}>
+
+    {/* Side storage boxes - raised slightly */}
+    <mesh position={[-1.0, 0.7, -2]}>
       <boxGeometry args={[0.2, 0.5, 1.6]} />
       <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
-    <mesh position={[1.3, 0.6, -2]}>
+    <mesh position={[1.0, 0.7, -2]}>
       <boxGeometry args={[0.2, 0.5, 1.6]} />
       <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
-    <mesh position={[-1.3, 0.6, 0]}>
+    <mesh position={[-1.0, 0.7, 0]}>
       <boxGeometry args={[0.2, 0.5, 1.8]} />
       <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
-    <mesh position={[1.3, 0.6, 0]}>
+    <mesh position={[1.0, 0.7, 0]}>
       <boxGeometry args={[0.2, 0.5, 1.8]} />
       <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
-    <mesh position={[-1.3, 0.6, 1.8]}>
+    <mesh position={[-1.0, 0.7, 1.8]}>
       <boxGeometry args={[0.2, 0.5, 1.8]} />
       <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
-    <mesh position={[1.3, 0.6, 1.8]}>
+    <mesh position={[1.0, 0.7, 1.8]}>
       <boxGeometry args={[0.2, 0.5, 1.8]} />
       <meshStandardMaterial color="#515141" /> {/* Dark olive drab */}
     </mesh>
-    {/* Wheels */}
+    {/* Front wheels - smaller - keeping the same height */}
     {[
-      { pos: [-1, 0.2, -2] },
-      { pos: [1, 0.2, -2] },
-      { pos: [-1, 0.2, 0] },
-      { pos: [1, 0.2, 0] },
-      { pos: [-1, 0.2, 1.8] },
-      { pos: [1, 0.2, 1.8] }
+      { pos: [-0.9, 0.4, -2] },
+      { pos: [0.9, 0.4, -2] }
     ].map((wheel, i) => (
-      <mesh key={i} position={wheel.pos}>
-        <cylinderGeometry args={[0.5, 0.5, 0.35, 8]} />
+      <mesh key={i} position={wheel.pos} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.33, 0.33, 0.25, 8]} />
+        <meshStandardMaterial color="#222" />
+      </mesh>
+    ))}
+    {/* Middle and rear wheels - smaller - keeping the same height */}
+    {[
+      { pos: [-0.9, 0.4, 0] },
+      { pos: [0.9, 0.4, 0] },
+      { pos: [-0.9, 0.4, 1.8] },
+      { pos: [0.9, 0.4, 1.8] }
+    ].map((wheel, i) => (
+      <mesh key={i + 2} position={wheel.pos} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.33, 0.33, 0.25, 8]} />
         <meshStandardMaterial color="#222" />
       </mesh>
     ))}

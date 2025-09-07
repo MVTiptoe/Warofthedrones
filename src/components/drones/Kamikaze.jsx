@@ -6,9 +6,9 @@ import '../../styles/drone.css';
 import { checkProjectileVehicleCollision, WEAPON_TYPES } from '../../utils/WeaponPhysics';
 import { triggerExplosion } from '../effects/ExplosionsManager';
 import { showDamageIndicator } from '../effects/DamageIndicator';
-import { DRONE_TYPES } from '../../utils/DronesContext';
+import { DRONE_TYPES } from '../../utils/GameContext';
 import { Controls } from '../KeyboardControls';
-import { useKamikaze } from '../../utils/KamikazeContext';
+import { useKamikaze } from '../../utils/GameContext';
 
 export default function Kamikaze() {
     const droneRef = useRef();
@@ -75,12 +75,8 @@ export default function Kamikaze() {
     const handleMouseMove = (event) => {
         if (isFirstPerson) {
             // Get normalized device coordinates (NDC) between -1 and 1
-            // Higher sensitivity for rocket-like steering
-            mousePos.current.x = (event.clientX / window.innerWidth) * 3 - 1.5;
-            mousePos.current.y = -(event.clientY / window.innerHeight) * 3 + 1.5;
-
-            // Prevent default browser behavior to ensure continuous tracking
-            event.preventDefault();
+            mousePos.current.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mousePos.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
         }
     };
 
@@ -131,34 +127,6 @@ export default function Kamikaze() {
         );
     }, [camera, subscribeKeys]);
 
-    useEffect(() => {
-        // Watch for first-person mode changes
-        console.log(`Kamikaze drone first-person mode: ${isFirstPerson ? 'ACTIVE' : 'INACTIVE'}`);
-
-        if (isFirstPerson) {
-            // When entering first-person mode, show visual feedback
-            const flash = document.createElement('div');
-            flash.style.position = 'fixed';
-            flash.style.top = '0';
-            flash.style.left = '0';
-            flash.style.width = '100%';
-            flash.style.height = '100%';
-            flash.style.backgroundColor = 'rgba(255, 85, 0, 0.3)';
-            flash.style.zIndex = '9999';
-            flash.style.transition = 'opacity 0.5s';
-            flash.style.pointerEvents = 'none';
-            document.body.appendChild(flash);
-
-            // Fade out and remove
-            setTimeout(() => {
-                flash.style.opacity = '0';
-                setTimeout(() => {
-                    document.body.removeChild(flash);
-                }, 500);
-            }, 100);
-        }
-    }, [isFirstPerson]);
-
     useFrame((state, delta) => {
         if (!droneRef.current || collisionOccurred.current) return;
 
@@ -170,37 +138,34 @@ export default function Kamikaze() {
         const forwardVector = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
         const rightVector = new THREE.Vector3(Math.cos(rotation), 0, -Math.sin(rotation));
 
-        // If in first person mode, use rocket-like steering
-        if (isFirstPerson) {
-            // In first-person view, always move forward automatically (rocket-like behavior)
-            velocityRef.current.add(forwardVector.clone().multiplyScalar(THRUST * 2.5));
+        // Apply forward movement and slight downward movement when pressing W
+        if (forward) {
+            velocityRef.current.add(forwardVector.clone().multiplyScalar(THRUST * 2)); // 2x speed for forward
+            velocityRef.current.y -= DIVE_POWER; // Slight downward movement
+        }
+        if (backward) {
+            velocityRef.current.add(forwardVector.clone().multiplyScalar(-THRUST));
+            velocityRef.current.y += DIVE_POWER * 0.8; // Slight upward movement when pressing S
+        }
 
-            // Mouse position directly controls rotation with increased sensitivity
-            const targetRotationY = rotation - mousePos.current.x * 0.4;
+        // If in first person mode, use mouse for direction with smoother interpolation
+        if (isFirstPerson) {
+            // Use mouse position to influence the drone rotation with smoother interpolation
+            const targetRotationY = rotation - mousePos.current.x * 0.15; // Increased sensitivity
             droneRef.current.rotation.y = THREE.MathUtils.lerp(
                 droneRef.current.rotation.y,
                 targetRotationY,
-                0.25
+                0.15 // Smoother interpolation
             );
 
-            // Pitch control with mouse Y
-            const pitchAmount = Math.max(-0.6, Math.min(0.6, mousePos.current.y * 0.6));
+            // Pitch control with mouse Y and smoother interpolation
+            const pitchAmount = Math.max(-0.4, Math.min(0.4, mousePos.current.y * 0.4)); // Increased range
             droneRef.current.rotation.x = THREE.MathUtils.lerp(
                 droneRef.current.rotation.x,
                 pitchAmount,
-                0.25
+                0.15 // Smoother interpolation
             );
         } else {
-            // Standard controls for third-person view
-            if (forward) {
-                velocityRef.current.add(forwardVector.clone().multiplyScalar(THRUST * 2));
-                velocityRef.current.y -= DIVE_POWER;
-            }
-            if (backward) {
-                velocityRef.current.add(forwardVector.clone().multiplyScalar(-THRUST));
-                velocityRef.current.y += DIVE_POWER * 0.8;
-            }
-
             // Standard keyboard rotation for third person
             if (left) {
                 droneRef.current.rotation.y = THREE.MathUtils.lerp(
@@ -504,10 +469,23 @@ export function KamikazeHUD({ showHUD }) {
                 {isFirstPerson ? 'Exit First Person' : 'First Person View'}
             </button>
 
+            {/* Crosshair for first-person view */}
+            {isFirstPerson && (
+                <div className="crosshair">
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="2" fill="white" />
+                        <line x1="12" y1="4" x2="12" y2="10" stroke="white" strokeWidth="1.25" />
+                        <line x1="12" y1="14" x2="12" y2="20" stroke="white" strokeWidth="1.25" />
+                        <line x1="4" y1="12" x2="10" y2="12" stroke="white" strokeWidth="1.25" />
+                        <line x1="14" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.25" />
+                    </svg>
+                </div>
+            )}
+
             {/* First person mode indicator */}
             {isFirstPerson && (
                 <div className="fpv-indicator">
-                    ★ KAMIKAZE ROCKET MODE ACTIVE ★
+                    KAMIKAZE - FIRST PERSON VIEW
                 </div>
             )}
         </div>

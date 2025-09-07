@@ -13,7 +13,9 @@ export const Controls = {
     strafeRight: 'strafeRight',
     selectDrone1: 'selectDrone1',
     selectDrone2: 'selectDrone2',
-    selectDrone3: 'selectDrone3'
+    selectDrone3: 'selectDrone3',
+    selectDrone4: 'selectDrone4',
+    toggleFirstPerson: 'toggleFirstPerson'
 };
 
 export default function KeyboardControls({ children }) {
@@ -29,7 +31,9 @@ export default function KeyboardControls({ children }) {
         { name: Controls.strafeRight, keys: ['KeyD'] },
         { name: Controls.selectDrone1, keys: ['Digit1'] },
         { name: Controls.selectDrone2, keys: ['Digit2'] },
-        { name: Controls.selectDrone3, keys: ['Digit3'] }
+        { name: Controls.selectDrone3, keys: ['Digit3'] },
+        { name: Controls.selectDrone4, keys: ['Digit4'] },
+        { name: Controls.toggleFirstPerson, keys: ['KeyV'] }
     ];
 
     return (

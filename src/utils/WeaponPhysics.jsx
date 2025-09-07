@@ -4,8 +4,11 @@ import { checkVehicleHit, useVehicleHealthStore, VEHICLE_CATEGORY_MAP } from './
 
 // FPS Tracking for performance optimization
 window.currentFps = 60; // Initialize with ideal FPS
+window.fpsHistory = []; // Store recent FPS values for stability
+window.lowFpsWarning = false; // Flag for low FPS warning
 let frameCount = 0;
 let lastFpsUpdateTime = 0;
+const FPS_HISTORY_LENGTH = 5; // Keep track of last 5 FPS readings for stability
 
 // Update FPS calculation every 0.5 seconds
 if (typeof window !== 'undefined') {
@@ -14,7 +17,41 @@ if (typeof window !== 'undefined') {
         const elapsed = now - lastFpsUpdateTime;
 
         if (elapsed >= 500) { // Update every 0.5 seconds
-            window.currentFps = frameCount * (1000 / elapsed);
+            const instantFps = frameCount * (1000 / elapsed);
+
+            // Add to history and keep only the last N readings
+            window.fpsHistory.push(instantFps);
+            if (window.fpsHistory.length > FPS_HISTORY_LENGTH) {
+                window.fpsHistory.shift();
+            }
+
+            // Calculate average FPS for more stable readings
+            const avgFps = window.fpsHistory.reduce((sum, fps) => sum + fps, 0) /
+                window.fpsHistory.length;
+
+            // Update the current FPS with the smoothed value
+            window.currentFps = avgFps;
+
+            // Check for low FPS conditions
+            if (avgFps < 30) {
+                // Set low FPS warning flag for game to adapt
+                window.lowFpsWarning = true;
+
+                // If this is persistent low FPS, consider adjusting global quality settings
+                if (window.fpsHistory.every(fps => fps < 30)) {
+                    // Publish event for game to respond to persistent performance issues
+                    if (!window.persistentLowFpsWarning) {
+                        window.persistentLowFpsWarning = true;
+                        window.dispatchEvent(new CustomEvent('persistentLowFps', {
+                            detail: { averageFps: avgFps }
+                        }));
+                    }
+                }
+            } else {
+                window.lowFpsWarning = false;
+                window.persistentLowFpsWarning = false;
+            }
+
             lastFpsUpdateTime = now;
             frameCount = 0;
         } else {
@@ -352,14 +389,26 @@ export function createExplosionEffect(weaponType, position) {
 
     // Early return with minimal data for shotgun (handled separately)
     if (weaponType === WEAPON_TYPES.SHOTGUN) {
+        // Even more aggressive optimization for shotgun effects - completely disabled at very low FPS
+        const currentFps = window.currentFps || 60;
+        if (currentFps < 25) {
+            // At extremely low FPS, just return position for damage calculation but no visual effect
+            return {
+                position: position.clone(),
+                type: weaponType,
+                noVisual: true,
+                startTime: Date.now()
+            };
+        }
+
         // Further reduce shotgun visual effects when FPS is below threshold
         const shotgunFpsThreshold = 45; // Higher threshold specifically for shotgun effects
-        const shotgunSpecificAdjustment = window.currentFps < shotgunFpsThreshold ?
-            Math.min(0.6, 60 / (window.currentFps || 60)) : 1.0;
+        const shotgunSpecificAdjustment = currentFps < shotgunFpsThreshold ?
+            Math.min(0.4, 60 / (window.currentFps || 60)) : 0.8;
 
         return {
             position: position.clone(),
-            radius: profile.outerRadius / 3 * shotgunSpecificAdjustment,
+            radius: profile.outerRadius / 4 * shotgunSpecificAdjustment, // Even smaller radius
             duration: 1,
             type: weaponType,
             startTime: Date.now()

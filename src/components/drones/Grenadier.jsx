@@ -6,9 +6,9 @@ import '../../styles/drone.css';
 import { WEAPON_TYPES, checkProjectileVehicleCollision } from '../../utils/WeaponPhysics';
 import { triggerExplosion } from '../effects/ExplosionsManager';
 import { showDamageIndicator } from '../effects/DamageIndicator';
-import { getKeys } from '../../utils/KeyboardControls';
+import { Controls } from '../KeyboardControls';
 import { triggerShotgunFire } from '../effects/ShotgunEffectsManager';
-import { DRONE_TYPES } from '../../utils/DronesContext';
+import { DRONE_TYPES } from '../../utils/GameContext';
 
 // Constants for object pooling
 const POOL_SIZE = {
@@ -155,7 +155,7 @@ export default function Grenadier() {
             detail: {
                 droneType: DRONE_TYPES.GRENADIER,
                 weaponType: 'shotgunAmmo',
-                ammoCount: newAmmo
+                ammoCount: Number(newAmmo)
             }
         }));
 
@@ -175,15 +175,19 @@ export default function Grenadier() {
 
         // Get current FPS to adaptively reduce shotgun pellets at lower FPS
         const currentFps = window.currentFps || 60;
-        const pelletCount = currentFps < 40 ? 1 : (currentFps < 50 ? 2 : 3); // Adaptive pellet count based on FPS
+        // More aggressive FPS-based pellet reduction
+        const pelletCount = currentFps < 30 ? 1 : (currentFps < 45 ? 2 : 3);
 
         // Creating buckshot - adaptively reduce pellet count based on FPS
         for (let i = 0; i < pelletCount; i++) {
+            // Reduce spread at lower pellet counts for more consistent damage
+            const spreadFactor = pelletCount === 1 ? 0.1 : 0.2;
+
             // Add slight random deviation for buckshot spread
             const spread = new THREE.Vector3(
-                (Math.random() - 0.5) * 0.2,
-                (Math.random() - 0.5) * 0.1,
-                (Math.random() - 0.5) * 0.2
+                (Math.random() - 0.5) * spreadFactor,
+                (Math.random() - 0.5) * (spreadFactor * 0.5),
+                (Math.random() - 0.5) * spreadFactor
             );
 
             const direction = forward.clone().add(spread).normalize();
@@ -202,8 +206,8 @@ export default function Grenadier() {
             }
             projectile.previousPosition.copy(projectile.position);
             projectile.direction.copy(direction);
-            projectile.speed = 0.9 + Math.random() * 0.3; // Slightly increase speed for faster traversal
-            projectile.life = 30; // Further reduced lifetime from 40 to 30 frames
+            projectile.speed = 1.0 + Math.random() * 0.2; // Slightly faster speed for less frames in flight
+            projectile.life = 25; // Further reduced lifetime from 30 to 25 frames
 
             // Add to active projectiles
             setActiveProjectiles(prev => [...prev, projectile]);
@@ -228,7 +232,7 @@ export default function Grenadier() {
             detail: {
                 droneType: DRONE_TYPES.GRENADIER,
                 weaponType: 'grenadeAmmo',
-                ammoCount: newAmmo
+                ammoCount: Number(newAmmo)
             }
         }));
 
@@ -277,7 +281,7 @@ export default function Grenadier() {
             detail: {
                 droneType: DRONE_TYPES.GRENADIER,
                 weaponType: 'dartAmmo',
-                ammoCount: newAmmo
+                ammoCount: Number(newAmmo)
             }
         }));
 
@@ -397,16 +401,26 @@ export default function Grenadier() {
     const handleWeaponImpact = (position, weaponType) => {
         console.log(`Weapon impact: ${weaponType} at position [${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)}]`);
 
+        // Create a position that can be cloned for custom events
+        const cloneablePosition = {
+            x: position.x,
+            y: position.y,
+            z: position.z
+        };
+
         // Use setTimeout to avoid calling setState during render
         setTimeout(() => {
             // For shotgun impacts, we rely on the ExplosionsManager to apply damage
             // without creating visual explosion effects
 
+            // Create a THREE.Vector3 for any functions that need it
+            const positionVector = new THREE.Vector3(cloneablePosition.x, cloneablePosition.y, cloneablePosition.z);
+
             // Trigger explosion effect - ExplosionsManager will handle shotgun specially
-            triggerExplosion(position, weaponType);
+            triggerExplosion(positionVector, weaponType);
 
             // Show damage indicator at the impact point
-            showDamageIndicator(position, 20);
+            showDamageIndicator(positionVector, 20);
         }, 0);
     };
 

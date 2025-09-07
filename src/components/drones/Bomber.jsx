@@ -6,9 +6,9 @@ import '../../styles/drone.css';
 import { WEAPON_TYPES, checkProjectileVehicleCollision } from '../../utils/WeaponPhysics';
 import { triggerExplosion } from '../effects/ExplosionsManager';
 import { showDamageIndicator } from '../effects/DamageIndicator';
-import { getKeys } from '../../utils/KeyboardControls';
+import { Controls } from '../KeyboardControls';
 import { useProjectilePool } from '../../utils/ProjectilePool';
-import { DRONE_TYPES } from '../../utils/DronesContext';
+import { DRONE_TYPES } from '../../utils/GameContext';
 
 // Constants for object pooling - reduced pool size for better performance
 const POOL_SIZE = {
@@ -190,7 +190,7 @@ export default function Bomber() {
                             detail: {
                                 droneType: DRONE_TYPES.BOMBER,
                                 weaponType: 'mineAmmo',
-                                ammoCount: newAmmo
+                                ammoCount: Number(newAmmo)
                             }
                         }));
 
@@ -231,7 +231,7 @@ export default function Bomber() {
                             detail: {
                                 droneType: DRONE_TYPES.BOMBER,
                                 weaponType: 'mortarAmmo',
-                                ammoCount: newAmmo
+                                ammoCount: Number(newAmmo)
                             }
                         }));
 
@@ -279,7 +279,7 @@ export default function Bomber() {
                         detail: {
                             droneType: DRONE_TYPES.BOMBER,
                             weaponType: 'rpgAmmo',
-                            ammoCount: newAmmo
+                            ammoCount: Number(newAmmo)
                         }
                     }));
 
@@ -332,14 +332,24 @@ export default function Bomber() {
     const handleWeaponImpact = (position, weaponType) => {
         console.log(`Weapon impact: ${weaponType} at position [${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)}]`);
 
+        // Create a position that can be cloned for custom events
+        const cloneablePosition = {
+            x: position.x,
+            y: position.y,
+            z: position.z
+        };
+
         // Use setTimeout to avoid calling setState during render
         setTimeout(() => {
+            // Create a THREE.Vector3 for any functions that need it
+            const positionVector = new THREE.Vector3(cloneablePosition.x, cloneablePosition.y, cloneablePosition.z);
+
             // Trigger explosion effect
             // This will now handle finding objects in range and applying damage
-            triggerExplosion(position, weaponType);
+            triggerExplosion(positionVector, weaponType);
 
             // Show one sample damage indicator at the impact point
-            showDamageIndicator(position, 20);
+            showDamageIndicator(positionVector, 20);
         }, 0);
     };
 
