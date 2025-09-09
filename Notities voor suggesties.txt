@@ -1,0 +1,22 @@
+UI:
+Radar Minimap
+
+alle buttons laten zien voor iedere drone rechtsboven 50% schuin naast elkaar zoals in die oude games. De buttons kleuren rood 80% transperancy en worden blauw 40% als ze klaar zijn.
+
+verzin aura of ander soort beeld rondom de drone als die heel snel gaat heel subtiel voor realisme zoals bij gta met helicopter.
+
+
+
+Aestectics: 
+Bij movement radar blade winds trail beeld rondom de drone ook ietsjes vager transperancy.
+
+
+
+
+anti-mine:
+op de grond blijven liggen.
+
+
+
+Nieuwe drones:
+1. 2 Ak47's - Grenade launcher
